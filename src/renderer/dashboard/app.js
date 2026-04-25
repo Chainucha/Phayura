@@ -1,5 +1,14 @@
 let currentSessions = [];
 let selectedPreset = 'split-h-50';
+let statusTimer = null;
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 // Receive state updates from main
 window.sunkist.onSessionChanged((updated) => {
@@ -18,8 +27,8 @@ function renderSidebar(sessions) {
   const list = document.getElementById('session-list');
   list.innerHTML = sessions.map(s => `
     <li>
-      <span class="dot" style="background:${s.accentColor}"></span>
-      <span class="session-name" title="${s.name}">${s.name}</span>
+      <span class="dot" style="background:${esc(s.accentColor)}"></span>
+      <span class="session-name" title="${esc(s.name)}">${esc(s.name)}</span>
       <span class="session-state ${s.state}">${s.state}</span>
       ${s.hwnd ? `<button class="btn-focus" data-id="${s.id}">&#9654;</button>` : ''}
     </li>
@@ -31,8 +40,8 @@ function renderSidebar(sessions) {
 function renderCards(sessions) {
   const row = document.getElementById('cards-row');
   row.innerHTML = sessions.map(s => `
-    <div class="session-card" style="border-top: 3px solid ${s.accentColor}">
-      <div class="card-name">${s.name}</div>
+    <div class="session-card" style="border-top: 3px solid ${esc(s.accentColor)}">
+      <div class="card-name">${esc(s.name)}</div>
       <div class="card-state ${s.state}">${s.state}</div>
       <div class="card-hwnd">${s.hwnd ? `HWND 0x${Number(s.hwnd).toString(16).toUpperCase()}` : '—'}</div>
       ${s.state === 'idle'
@@ -61,7 +70,8 @@ function setStatus(msg, isError = false) {
   const el = document.getElementById('status-msg');
   el.textContent = msg;
   el.className = 'status' + (isError ? ' error' : '');
-  setTimeout(() => { el.textContent = ''; }, 3000);
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { el.textContent = ''; }, 3000);
 }
 
 // Preset buttons
@@ -108,6 +118,7 @@ async function init() {
   const workspace = await window.sunkist.getWorkspace();
   currentSessions = workspace.sessions || [];
   selectedPreset  = workspace.activePreset || 'split-h-50';
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`.preset-btn[data-preset="${selectedPreset}"]`)?.classList.add('active');
   document.getElementById('chk-lock').checked = !!workspace.lockLayout;
   renderAll();
