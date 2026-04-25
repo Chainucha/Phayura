@@ -1,4 +1,5 @@
 let currentSessions = [];
+let selectedPreset = 'split-h-50';
 
 window.sunkist.onSessionChanged((updated) => {
   const idx = currentSessions.findIndex(s => s.id === updated.id);
@@ -9,6 +10,8 @@ window.sunkist.onSessionChanged((updated) => {
 async function init() {
   const workspace = await window.sunkist.getWorkspace();
   currentSessions = workspace.sessions;
+  selectedPreset = workspace.activePreset || 'split-h-50';
+  document.querySelector(`.preset-btn[data-preset="${selectedPreset}"]`)?.classList.add('active');
   renderSessions(currentSessions);
 }
 
@@ -32,8 +35,6 @@ document.getElementById('btn-add').addEventListener('click', async () => {
 });
 
 init();
-
-let selectedPreset = 'split-h-50';
 
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
