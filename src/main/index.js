@@ -1,8 +1,7 @@
-const { randomUUID } = require('crypto');
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const Store = require('electron-store').default;
 const CH = require('../shared/ipc-channels');
+const { loadWorkspace, saveWorkspace, addSession } = require('./workspaceController');
 const { launchSession, closeSession } = require('./browserInstanceManager');
 const { applyLayout } = require('./windowLayoutEngine');
 const { bindHotkeys, unbindAll } = require('./focusController');
@@ -14,27 +13,8 @@ if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 
 app.commandLine.appendSwitch('high-dpi-support', '1');
 
-const store = new Store({ name: 'sunkist' });
-
 // Runtime state (HWNDs are not persisted — they change each launch)
 const workspace = loadWorkspace();
-
-function loadWorkspace() {
-  const saved = store.get('workspace');
-  if (saved) {
-    // Strip runtime-only fields
-    saved.sessions.forEach(s => { s.hwnd = null; s.pid = null; s.state = 'idle'; });
-    return saved;
-  }
-  return {
-    id: randomUUID(),
-    name: 'Default',
-    sessions: [],
-    activePreset: 'split-h-50',
-    lockLayout: false,
-    overlayVisible: true,
-  };
-}
 
 let dashboard;
 
@@ -63,28 +43,11 @@ app.whenReady().then(() => {
   ipcMain.handle(CH.GET_WORKSPACE, () => workspace);
 
   ipcMain.handle(CH.ADD_SESSION, (_e, { name }) => {
-    const session = {
-      id: randomUUID(),
-      name,
-      browserPath: null,   // null = auto-detect Chrome
-      url: 'https://universe.flyff.com/play',
-      hotkey: null,        // null = use index default (Ctrl+Alt+1, Ctrl+Alt+2)
-      accentColor: workspace.sessions.length === 0 ? '#F59E0B' : '#06B6D4',
-      hwnd: null,
-      pid: null,
-      state: 'idle',       // idle | launching | tracking | arranged | active
-    };
-    workspace.sessions.push(session);
-    return session;
+    return addSession(workspace, name);
   });
 
   ipcMain.handle(CH.SAVE_WORKSPACE, (_e, patch) => {
-    Object.assign(workspace, patch);
-    const toSave = {
-      ...workspace,
-      sessions: workspace.sessions.map(({ hwnd, pid, state, ...rest }) => rest),
-    };
-    store.set('workspace', toSave);
+    saveWorkspace(workspace, patch);
     return true;
   });
 
@@ -101,6 +64,7 @@ app.whenReady().then(() => {
       session.pid   = pid;
       session.hwnd  = hwnd;
       session.state = 'tracking';
+      saveWorkspace(workspace);
     } catch (err) {
       session.state = 'idle';
       return { error: err.message };
