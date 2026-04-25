@@ -5,6 +5,8 @@ const Store = require('electron-store').default;
 const CH = require('../shared/ipc-channels');
 const { launchSession, closeSession } = require('./browserInstanceManager');
 const { applyLayout } = require('./windowLayoutEngine');
+const { bindHotkeys, unbindAll } = require('./focusController');
+const { focusWindow } = require('./win32/windowOps');
 
 // Single instance — two Sunkists would fight over hotkeys
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
@@ -104,6 +106,7 @@ app.whenReady().then(() => {
     }
 
     safeSend(CH.SESSION_STATE_CHANGED, { ...session });
+    rebindHotkeys();
     return { ok: true };
   });
 
@@ -115,6 +118,7 @@ app.whenReady().then(() => {
     session.pid   = null;
     session.state = 'idle';
     safeSend(CH.SESSION_STATE_CHANGED, { ...session });
+    rebindHotkeys();
     return { ok: true };
   });
 
@@ -132,9 +136,29 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle(CH.FOCUS_SESSION, (_e, { id }) => {
+    const session = workspace.sessions.find(s => s.id === id);
+    if (!session?.hwnd) return { error: 'Session has no tracked window' };
+    focusWindow(session.hwnd);
+    return { ok: true };
+  });
+
+  function rebindHotkeys() {
+    bindHotkeys(workspace.sessions, (focused) => {
+      workspace.sessions.forEach(s => {
+        if (s.state === 'active') s.state = 'arranged';
+      });
+      focused.state = 'active';
+      workspace.sessions.forEach(s =>
+        safeSend(CH.SESSION_STATE_CHANGED, { ...s })
+      );
+    });
+  }
+
   // Remaining handlers added in later tasks
 });
 
+app.on('before-quit', () => unbindAll());
 app.on('window-all-closed', () => app.quit());
 
 module.exports = { workspace };

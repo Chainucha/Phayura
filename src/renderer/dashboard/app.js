@@ -22,8 +22,13 @@ function renderSessions(sessions) {
       <span class="dot" style="background:${s.accentColor}"></span>
       <span>${s.name}</span>
       <span class="state">${s.state}</span>
+      ${s.state !== 'idle' ? `<button class="btn-focus" data-id="${s.id}">▶</button>` : ''}
     </li>
   `).join('');
+
+  list.querySelectorAll('.btn-focus').forEach(btn => {
+    btn.addEventListener('click', () => window.sunkist.focusSession(btn.dataset.id));
+  });
 }
 
 document.getElementById('btn-add').addEventListener('click', async () => {
