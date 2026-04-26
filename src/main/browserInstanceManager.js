@@ -1,59 +1,43 @@
-const { spawn } = require('child_process');
-const fs   = require('fs');
-const path = require('path');
-const { app } = require('electron');
-const { waitForWindow } = require('./win32/windowOps');
+const { BrowserWindow } = require('electron');
 
-const PROFILES_ROOT = path.join(app.getPath('userData'), 'profiles');
+const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-function profileDirFor(sessionId) {
-  const dir = path.join(PROFILES_ROOT, sessionId);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
+const gameWindows = new Map(); // sessionId -> BrowserWindow
 
-function defaultChromePath() {
-  const candidates = [
-    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
-    // Edge as fallback
-    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    path.join(process.env.LOCALAPPDATA || '', 'Microsoft\\Edge\\Application\\msedge.exe'),
-  ];
-  return candidates.find(p => fs.existsSync(p)) || null;
-}
+function launchSession(session, onClosed) {
+  if (gameWindows.has(session.id)) throw new Error('Session already running');
 
-/**
- * Launch browser with isolated profile. Returns updated session with pid + hwnd.
- * Throws if no browser found or window doesn't appear within timeout.
- *
- * Deliberately omitted args: --remote-debugging-port, --load-extension,
- * --enable-automation, --disable-web-security.
- */
-async function launchSession(session) {
-  const exe = session.browserPath || defaultChromePath();
-  if (!exe) throw new Error('No browser found. Set browserPath in session settings.');
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 720,
+    title: session.name,
+    webPreferences: {
+      partition: `persist:${session.id}`,
+      nodeIntegration: false,
+      contextIsolation: true,
+      devTools: false,
+    },
+  });
 
-  const profile = profileDirFor(session.id);
-  const args = [
-    `--user-data-dir=${profile}`,
-    '--new-window',
-    session.url || 'https://universe.flyff.com/play',
-  ];
+  win.webContents.setUserAgent(CHROME_UA);
+  win.loadURL(session.url || 'https://universe.flyff.com/play');
 
-  const child = spawn(exe, args, { detached: true, stdio: 'ignore' });
-  child.unref(); // Sunkist crash must not kill the game
+  const hwndBuf = win.getNativeWindowHandle();
+  const hwnd = Number(hwndBuf.readBigUInt64LE(0));
 
-  const hwnd = await waitForWindow(child.pid, { childProcess: child });
-  return { pid: child.pid, hwnd };
+  gameWindows.set(session.id, win);
+  win.on('closed', () => {
+    gameWindows.delete(session.id);
+    if (onClosed) onClosed(session.id);
+  });
+
+  return { hwnd, pid: win.webContents.getOSProcessId() };
 }
 
 function closeSession(session) {
-  if (!session.pid) return;
-  try {
-    process.kill(session.pid, 'SIGTERM');
-  } catch { /* already gone */ }
+  const win = gameWindows.get(session.id);
+  if (win && !win.isDestroyed()) win.destroy();
+  gameWindows.delete(session.id);
 }
 
-module.exports = { launchSession, closeSession, defaultChromePath };
+module.exports = { launchSession, closeSession };

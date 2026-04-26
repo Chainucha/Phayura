@@ -27,14 +27,14 @@ src/
   main/
     index.js                 ← app lifecycle, single-instance lock, IPC wiring
     workspaceController.js   ← electron-store persistence; strips hwnd/pid/state before save
-    browserInstanceManager.js← spawn Chrome with --user-data-dir profile, detect HWND by PID
+    browserInstanceManager.js← create BrowserWindow per session with isolated partition, get HWND via getNativeWindowHandle()
     windowLayoutEngine.js    ← pure layout math → SetWindowPos (no focus side effects)
     focusController.js       ← globalShortcut + AttachThreadInput focus switching
     overlayManager.js        ← transparent badge BrowserWindows, 250ms tracking loop
     hoverFocus.js            ← uiohook-napi read-only hover detection (off by default)
     win32/
       bindings.js            ← all koffi declarations; absence list documented
-      windowOps.js           ← findWindowsByPid, waitForWindow, placeWindow, focusWindow
+      windowOps.js           ← placeWindow, getRect, focusWindow
   preload/
     dashboard.js             ← exposes window.sunkist.* to dashboard renderer
     overlay.js               ← exposes window.overlayBridge.* to badge renderer
@@ -49,11 +49,9 @@ src/
 
 **Compliance boundary** — `src/main/win32/bindings.js` deliberately omits: `SendInput`, `keybd_event`, `mouse_event`, `PostMessage`, `ReadProcessMemory`, `WriteProcessMemory`, debugger APIs, `BitBlt`/`PrintWindow`. Adding any is a ToS violation — flag in PR review.
 
-**Chrome args** — `browserInstanceManager.js` must never pass `--remote-debugging-port`, `--load-extension`, `--enable-automation`, or `--disable-web-security`.
+**Game windows** — each session is a `BrowserWindow` with `partition: 'persist:<id>'` for cookie isolation, `devTools: false`, and a standard Chrome user-agent. No `nodeIntegration`, no preload on game windows.
 
-**No Flyff in Electron** — game URL loads in external Chrome only, never in a `BrowserWindow`.
-
-**koffi callbacks** — always `koffi.register` / `koffi.unregister` in pairs inside `findWindowsByPid` to avoid trampoline leaks.
+**koffi callbacks** — if `EnumWindows` is ever used again, always `koffi.register` / `koffi.unregister` in pairs to avoid trampoline leaks.
 
 **Overlay** — `focusable: false` + `setIgnoreMouseEvents(true, { forward: true })` at creation; per-element interactivity toggled by `mouseenter`/`mouseleave` in badge renderer via `OVERLAY_INTERACTIVE` IPC.
 

@@ -65,16 +65,20 @@ app.whenReady().then(() => {
     return true;
   });
 
-  ipcMain.handle(CH.LAUNCH_SESSION, async (_e, { id }) => {
+  ipcMain.handle(CH.LAUNCH_SESSION, (_e, { id }) => {
     const session = workspace.sessions.find(s => s.id === id);
     if (!session) return { error: 'Session not found' };
     if (session.state !== 'idle') return { error: 'Session already active' };
 
-    session.state = 'launching';
-    safeSend(CH.SESSION_STATE_CHANGED, { ...session });
-
     try {
-      const { pid, hwnd } = await launchSession(session);
+      const { pid, hwnd } = launchSession(session, (closedId) => {
+        const s = workspace.sessions.find(s => s.id === closedId);
+        if (!s) return;
+        s.hwnd = null; s.pid = null; s.state = 'idle';
+        destroyBadge(closedId);
+        safeSend(CH.SESSION_STATE_CHANGED, { ...s });
+        rebindHotkeys();
+      });
       session.pid   = pid;
       session.hwnd  = hwnd;
       session.state = 'tracking';
