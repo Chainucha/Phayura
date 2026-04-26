@@ -156,7 +156,7 @@ app.whenReady().then(() => {
   });
 
   // Game container signals readiness — send current session state
-  ipcMain.on(CH.GAME_READY, sendGameUpdate);
+  ipcMain.on(CH.GAME_READY, () => sendGameUpdate());
 
   // Only activate if user has explicitly enabled it in settings
   if (workspace.hoverFocusEnabled) {
