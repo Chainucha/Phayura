@@ -67,3 +67,11 @@ body { background: #1a1a2e; color: #fff; font-family: system-ui, sans-serif;
 .hotkey-table td { padding: 4px 16px 4px 0; color: #ccc; }
 .hotkey-table td:first-child { font-family: monospace; color: #f59e0b; }
 .note { font-size: 11px; color: #666; margin-top: 8px; }
+
+/* Add Session dialog */
+#dlg-add { background: #16213e; border: 1px solid #334155; border-radius: 8px;
+           color: #fff; padding: 20px; min-width: 280px; }
+#dlg-add::backdrop { background: rgba(0,0,0,0.6); }
+#dlg-add-input { width: 100%; background: #0f172a; border: 1px solid #334155;
+                 color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 14px; }
+#dlg-add-input:focus { outline: none; border-color: #f59e0b; }

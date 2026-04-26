@@ -1,5 +1,5 @@
 {
-  "name": "sunkist",
+  "name": "citra",
   "version": "0.1.0",
   "description": "ToS-compliant window manager for Flyff Universe dual-clienting",
   "main": "src/main/index.js",

@@ -1,7 +1,7 @@
 const { randomUUID } = require('crypto');
 const Store = require('electron-store');
 
-const store = new Store({ name: 'sunkist' });
+const store = new Store({ name: 'citra' });
 
 function loadWorkspace() {
   const saved = store.get('workspace');

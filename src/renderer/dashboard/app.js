@@ -102,8 +102,19 @@ document.getElementById('btn-save').addEventListener('click', async () => {
   setStatus('Saved');
 });
 
-document.getElementById('btn-add').addEventListener('click', async () => {
-  const name = prompt('Session name:', `Account ${currentSessions.length + 1}`);
+const dlgAdd   = document.getElementById('dlg-add');
+const dlgInput = document.getElementById('dlg-add-input');
+
+document.getElementById('btn-add').addEventListener('click', () => {
+  dlgInput.value = `Account ${currentSessions.length + 1}`;
+  dlgAdd.showModal();
+  dlgInput.select();
+});
+
+document.getElementById('dlg-add-cancel').addEventListener('click', () => dlgAdd.close());
+
+dlgAdd.addEventListener('close', async () => {
+  const name = dlgInput.value.trim();
   if (!name) return;
   const session = await window.sunkist.addSession(name);
   currentSessions.push(session);

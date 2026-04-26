@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'" />
-  <title>Sunkist</title>
+  <title>Citra</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="app">
     <!-- Sidebar -->
     <aside id="sidebar">
-      <h1 class="logo">SUNKIST</h1>
+      <h1 class="logo">CITRA</h1>
       <p class="section-label">SESSIONS</p>
       <ul id="session-list"></ul>
       <button id="btn-add">+ Add Session</button>
@@ -61,6 +61,19 @@
       </section>
     </main>
   </div>
+
+  <!-- Add Session dialog (replaces window.prompt which is blocked in Electron) -->
+  <dialog id="dlg-add">
+    <form method="dialog">
+      <p class="section-label" style="margin-bottom:8px">SESSION NAME</p>
+      <input id="dlg-add-input" type="text" autocomplete="off" />
+      <div class="action-row" style="margin-top:12px">
+        <button type="submit" id="dlg-add-ok" class="btn-primary">Add</button>
+        <button type="button" id="dlg-add-cancel" class="btn-secondary">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="app.js"></script>
 </body>
 </html>
