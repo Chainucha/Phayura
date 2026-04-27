@@ -1,8 +1,10 @@
 const PRESETS = {
   'split-h-50': { dir: 'row',    ratio: 0.5 },
   'split-h-70': { dir: 'row',    ratio: 0.7 },
+  'split-h-30': { dir: 'row',    ratio: 0.3 },
   'split-v-50': { dir: 'column', ratio: 0.5 },
   'split-v-70': { dir: 'column', ratio: 0.7 },
+  'split-v-30': { dir: 'column', ratio: 0.3 },
 };
 
 const wrappers = new Map(); // sessionId → wrapper div (webview lives inside)
@@ -95,14 +97,18 @@ function reconcile(sessions, container, overlay) {
   setDirStyles(views);
 
   if (views.length === 1) {
-    views[0].style.flex = '1';
+    views[0].style.flex  = '1';
+    views[0].style.order = '';
     return;
   }
 
-  views[0].style.flex = String(splitRatio);
-  views[1].style.flex = String(1 - splitRatio);
+  views[0].style.flex  = String(splitRatio);
+  views[1].style.flex  = String(1 - splitRatio);
+  views[0].style.order = '0';
+  views[1].style.order = '2';
   dividerEl = createDivider(views[0], views[1], container, overlay);
-  container.insertBefore(dividerEl, views[1]);
+  dividerEl.style.order = '1';
+  container.appendChild(dividerEl);
 }
 
 // ── In-place updates (no webview reload) ─────────────────────────────────────
@@ -113,15 +119,20 @@ function updateDirection(container, overlay) {
   setDirStyles(views);
 
   if (views.length === 2) {
-    views[0].style.flex = String(splitRatio);
-    views[1].style.flex = String(1 - splitRatio);
+    // Visual order may differ from DOM order — driven by CSS order in reconcile.
+    // Look up by visual order so drag math + flex assignment stay consistent.
+    const ordered = [...wrappers.values()].sort((a, b) =>
+      (parseInt(a.style.order || '0', 10)) - (parseInt(b.style.order || '0', 10))
+    );
+    ordered[0].style.flex = String(splitRatio);
+    ordered[1].style.flex = String(1 - splitRatio);
 
     // Recreate divider only (drag closure captures isRow — must be fresh)
     if (dividerEl) {
-      const anchor = dividerEl.nextSibling;
       dividerEl.remove();
-      dividerEl = createDivider(views[0], views[1], container, overlay);
-      container.insertBefore(dividerEl, anchor);
+      dividerEl = createDivider(ordered[0], ordered[1], container, overlay);
+      dividerEl.style.order = '1';
+      container.appendChild(dividerEl);
     }
   }
 }
@@ -145,6 +156,7 @@ function setDirStyles(views) {
 function createWrapper(session) {
   const wrap = document.createElement('div');
   wrap.className = 'webview-wrap';
+  wrap.style.setProperty('--accent', session.accentColor || '#f59e0b');
 
   const wv = document.createElement('webview');
   wv.setAttribute('partition', `persist:${session.id}`);
@@ -182,6 +194,7 @@ function createWrapper(session) {
 function syncLabel(session) {
   const wrap = wrappers.get(session.id);
   if (!wrap) return;
+  wrap.style.setProperty('--accent', session.accentColor || '#f59e0b');
   const label = wrap.querySelector('.session-label');
   if (!label) return;
   const dot  = label.querySelector('.dot');

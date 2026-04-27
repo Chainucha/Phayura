@@ -1,12 +1,13 @@
 const { BrowserWindow } = require('electron');
 const path = require('path');
 
-let containerWin = null;
+const containers = new Map(); // groupId → BrowserWindow
 
-function ensureContainer(onClosedOnce) {
-  if (containerWin && !containerWin.isDestroyed()) return containerWin;
+function ensureContainer(groupId, onClosedOnce) {
+  let win = containers.get(groupId);
+  if (win && !win.isDestroyed()) return win;
 
-  containerWin = new BrowserWindow({
+  win = new BrowserWindow({
     width: 1280,
     height: 720,
     autoHideMenuBar: true,
@@ -17,59 +18,93 @@ function ensureContainer(onClosedOnce) {
       sandbox: false,
       backgroundThrottling: false,
       preload: path.join(__dirname, '../preload/game.js'),
+      additionalArguments: [`--group-id=${groupId}`],
     },
   });
 
-  containerWin.maximize();
-  containerWin.loadFile(path.join(__dirname, '../renderer/game/index.html'));
+  win.maximize();
+  win.loadFile(path.join(__dirname, '../renderer/game/index.html'));
   if (process.env.NODE_ENV === 'dev') {
-    containerWin.webContents.openDevTools({ mode: 'detach' });
+    win.webContents.openDevTools({ mode: 'detach' });
   }
-  containerWin.on('closed', () => {
-    containerWin = null;
+  win.on('closed', () => {
+    containers.delete(groupId);
     if (onClosedOnce) onClosedOnce();
   });
 
-  return containerWin;
+  containers.set(groupId, win);
+  return win;
 }
 
-function sendToContainer(channel, payload) {
-  if (containerWin && !containerWin.isDestroyed()) {
-    containerWin.webContents.send(channel, payload);
-  }
+function sendToContainer(groupId, channel, payload) {
+  const win = containers.get(groupId);
+  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
-function getContainerHwnd() {
-  if (!containerWin || containerWin.isDestroyed()) return null;
-  return Number(containerWin.getNativeWindowHandle().readBigUInt64LE(0));
+function getContainerHwnd(groupId) {
+  const win = containers.get(groupId);
+  if (!win || win.isDestroyed()) return null;
+  return Number(win.getNativeWindowHandle().readBigUInt64LE(0));
 }
 
-function destroyContainer() {
-  if (!containerWin || containerWin.isDestroyed()) { containerWin = null; return; }
-  containerWin.removeAllListeners('close');
-  try { containerWin.close(); } catch { containerWin.destroy(); }
-  containerWin = null;
+function destroyContainer(groupId) {
+  const win = containers.get(groupId);
+  if (!win) return;
+  containers.delete(groupId);
+  if (win.isDestroyed()) return;
+  win.removeAllListeners('close');
+  try { win.close(); } catch { win.destroy(); }
 }
 
-function isContainerAlive() {
-  return containerWin != null && !containerWin.isDestroyed();
+function isContainerAlive(groupId) {
+  const win = containers.get(groupId);
+  return win != null && !win.isDestroyed();
 }
 
-function getContainerWindow() {
-  return isContainerAlive() ? containerWin : null;
+function getContainerWindow(groupId) {
+  return isContainerAlive(groupId) ? containers.get(groupId) : null;
 }
 
-function maximizeContainer() {
-  if (containerWin && !containerWin.isDestroyed()) containerWin.maximize();
+function maximizeContainer(groupId) {
+  const win = containers.get(groupId);
+  if (win && !win.isDestroyed()) win.maximize();
 }
 
-function toggleFullscreenContainer() {
-  if (!containerWin || containerWin.isDestroyed()) return;
+function toggleFullscreenContainer(groupId) {
+  const win = containers.get(groupId);
+  if (!win || win.isDestroyed()) return;
   try {
-    containerWin.setFullScreen(!containerWin.isFullScreen());
+    win.setFullScreen(!win.isFullScreen());
   } catch (e) {
     console.warn('[fullscreen] toggle failed:', e?.message);
   }
 }
 
-module.exports = { ensureContainer, sendToContainer, getContainerHwnd, getContainerWindow, destroyContainer, isContainerAlive, maximizeContainer, toggleFullscreenContainer };
+function getGroupIdByWebContents(webContents) {
+  for (const [groupId, win] of containers) {
+    if (!win.isDestroyed() && win.webContents.id === webContents.id) return groupId;
+  }
+  return null;
+}
+
+function getFocusedGroupId() {
+  for (const [groupId, win] of containers) {
+    if (!win.isDestroyed() && win.isFocused()) return groupId;
+  }
+  return null;
+}
+
+function isAnyContainerAlive() {
+  for (const win of containers.values()) if (!win.isDestroyed()) return true;
+  return false;
+}
+
+function getAllGroupIds() {
+  return [...containers.keys()].filter(id => isContainerAlive(id));
+}
+
+module.exports = {
+  ensureContainer, sendToContainer, getContainerHwnd, getContainerWindow,
+  destroyContainer, isContainerAlive, maximizeContainer, toggleFullscreenContainer,
+  getGroupIdByWebContents, getFocusedGroupId, isAnyContainerAlive, getAllGroupIds,
+};

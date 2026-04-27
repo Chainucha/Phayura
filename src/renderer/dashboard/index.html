@@ -15,33 +15,18 @@
       <p class="section-label">SESSIONS</p>
       <ul id="session-list"></ul>
       <button id="btn-add">+ Add Session</button>
+      <button id="btn-add-group">+ Add Group</button>
     </aside>
 
     <!-- Main panel -->
     <main id="main-panel">
-      <!-- Session cards -->
-      <div id="cards-row"></div>
+      <!-- Group sections render here -->
+      <div id="groups-container"></div>
 
-      <!-- Layout picker -->
+      <!-- Global actions -->
       <section class="panel-section">
-        <p class="section-label">LAYOUT</p>
-        <div class="preset-row">
-          <button class="preset-btn active" data-preset="split-h-50">50/50 H</button>
-          <button class="preset-btn" data-preset="split-v-50">50/50 V</button>
-          <button class="preset-btn" data-preset="split-h-70">70/30 H</button>
-          <button class="preset-btn" data-preset="split-v-70">70/30 V</button>
-        </div>
         <div class="action-row">
-          <button id="btn-apply" class="btn-primary">Apply Layout</button>
-          <button id="btn-lock" class="btn-toggle" aria-pressed="false">🔓 Unlocked</button>
           <button id="btn-hover" class="btn-toggle" aria-pressed="false">Hover Focus: Off</button>
-        </div>
-      </section>
-
-      <!-- Actions -->
-      <section class="panel-section">
-        <div class="action-row">
-          <button id="btn-launch-all" class="btn-accent">Launch All</button>
           <button id="btn-save" class="btn-secondary">Save Workspace</button>
           <span id="status-msg" class="status"></span>
         </div>
@@ -53,19 +38,21 @@
         <table id="hotkey-table" class="hotkey-table">
           <tr><td>Ctrl+Alt+1</td><td>Focus Session 1</td></tr>
           <tr><td>Ctrl+Alt+2</td><td>Focus Session 2</td></tr>
-          <tr><td>Tab</td><td>Cycle Focus (only inside game window)</td></tr>
-          <tr><td>F11</td><td>Toggle Fullscreen (only inside game window)</td></tr>
+          <tr><td>Tab</td><td>Cycle Focus (only inside a group window)</td></tr>
+          <tr><td>F11</td><td>Toggle Fullscreen (only inside a group window)</td></tr>
         </table>
         <p class="note">Hotkeys change which window is in front. They are never sent to the game.</p>
       </section>
     </main>
   </div>
 
-  <!-- Add Session dialog (replaces window.prompt which is blocked in Electron) -->
+  <!-- Add Session dialog -->
   <dialog id="dlg-add">
     <form method="dialog">
       <p class="section-label dlg-label">SESSION NAME</p>
       <input id="dlg-add-input" type="text" autocomplete="off" />
+      <p class="section-label dlg-label" style="margin-top: 12px;">GROUP</p>
+      <select id="dlg-add-group"></select>
       <div class="action-row dlg-actions">
         <button type="submit" id="dlg-add-ok" class="btn-primary">Add</button>
         <button type="button" id="dlg-add-cancel" class="btn-secondary">Cancel</button>
@@ -81,6 +68,18 @@
       <div class="action-row dlg-actions">
         <button type="submit" id="dlg-rename-ok" class="btn-primary">Save</button>
         <button type="button" id="dlg-rename-cancel" class="btn-secondary">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Add / Rename Group dialog -->
+  <dialog id="dlg-group">
+    <form method="dialog">
+      <p class="section-label dlg-label" id="dlg-group-title">GROUP NAME</p>
+      <input id="dlg-group-input" type="text" autocomplete="off" />
+      <div class="action-row dlg-actions">
+        <button type="submit" id="dlg-group-ok" class="btn-primary">Save</button>
+        <button type="button" id="dlg-group-cancel" class="btn-secondary">Cancel</button>
       </div>
     </form>
   </dialog>
