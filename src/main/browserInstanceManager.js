@@ -15,6 +15,7 @@ function ensureContainer(onClosedOnce) {
       contextIsolation: true,
       webviewTag: true,
       sandbox: false,
+      backgroundThrottling: false,
       preload: path.join(__dirname, '../preload/game.js'),
     },
   });

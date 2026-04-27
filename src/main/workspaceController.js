@@ -16,6 +16,7 @@ function loadWorkspace() {
     };
   }
   // Reset runtime-only fields
+  saved.sessions = saved.sessions || [];
   saved.sessions.forEach(s => { s.hwnd = null; s.pid = null; s.state = 'idle'; });
   return saved;
 }
@@ -53,4 +54,13 @@ function deleteSession(workspace, id) {
   return true;
 }
 
-module.exports = { loadWorkspace, saveWorkspace, addSession, deleteSession };
+function renameSession(workspace, id, name) {
+  const session = workspace.sessions.find(s => s.id === id);
+  if (!session) return null;
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return null;
+  session.name = trimmed;
+  return session;
+}
+
+module.exports = { loadWorkspace, saveWorkspace, addSession, deleteSession, renameSession };

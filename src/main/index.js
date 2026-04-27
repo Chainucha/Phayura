@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, session: electronSession } = require('electron');
 const path = require('path');
 const CH = require('../shared/ipc-channels');
-const { loadWorkspace, saveWorkspace, addSession, deleteSession } = require('./workspaceController');
+const { loadWorkspace, saveWorkspace, addSession, deleteSession, renameSession } = require('./workspaceController');
 const { ensureContainer, sendToContainer, getContainerHwnd, destroyContainer, isContainerAlive, maximizeContainer, toggleFullscreenContainer } = require('./browserInstanceManager');
 const { bindHotkeys, unbindAll, enableContainerHotkeys, disableContainerHotkeys } = require('./focusController');
 const { focusWindow } = require('./win32/windowOps');
@@ -82,7 +82,9 @@ app.whenReady().then(() => {
   ipcMain.handle(CH.GET_WORKSPACE, () => workspace);
 
   ipcMain.handle(CH.ADD_SESSION, (_e, { name }) => {
-    return addSession(workspace, name);
+    const session = addSession(workspace, name);
+    saveWorkspace(workspace);
+    return session;
   });
 
   ipcMain.handle(CH.SAVE_WORKSPACE, (_e, patch) => {
@@ -149,6 +151,15 @@ app.whenReady().then(() => {
 
     rebindHotkeys();
     return { ok: true };
+  });
+
+  ipcMain.handle(CH.RENAME_SESSION, (_e, { id, name }) => {
+    const session = renameSession(workspace, id, name);
+    if (!session) return { error: 'Invalid name or session not found' };
+    saveWorkspace(workspace);
+    safeSend(CH.SESSION_STATE_CHANGED, { ...session });
+    if (session.state !== 'idle' && isContainerAlive()) sendGameUpdate();
+    return { ok: true, session: { ...session } };
   });
 
   ipcMain.handle(CH.DELETE_SESSION, async (_e, { id }) => {

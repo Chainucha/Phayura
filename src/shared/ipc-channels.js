@@ -7,6 +7,7 @@ module.exports = {
   FOCUS_SESSION:        'session:focus',
   ADD_SESSION:          'session:add',
   DELETE_SESSION:       'session:delete',
+  RENAME_SESSION:       'session:rename',
   OVERLAY_FOCUS:        'overlay:focus',
   OVERLAY_INTERACTIVE:  'overlay:setInteractive',
   SESSION_STATE_CHANGED:'session:stateChanged',

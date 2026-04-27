@@ -33,8 +33,8 @@ window.gameBridge.onUpdate(({ sessions, preset, lockLayout, applyRatio, hoverFoc
   const active    = sessions.slice(0, 2);
 
   if (idsChanged) {
-    // Session set changed — full rebuild (webviews reload, unavoidable)
-    fullRebuild(active, container, overlay);
+    // Session set changed — reconcile in-place (preserve existing webviews)
+    reconcile(active, container, overlay);
   } else if (dirChanged) {
     // Only direction changed — update CSS in-place, recreate divider only
     updateDirection(container, overlay);
@@ -44,6 +44,9 @@ window.gameBridge.onUpdate(({ sessions, preset, lockLayout, applyRatio, hoverFoc
   } else if (lockChanged && dividerEl) {
     applyLockState();
   }
+
+  // Sync label name + dot color (rename/recolor must not reload webview)
+  active.forEach(s => syncLabel(s));
 });
 
 window.gameBridge.onFocusWebview(({ id }) => {
@@ -56,34 +59,50 @@ window.gameBridge.onFocusWebview(({ id }) => {
 
 window.gameBridge.ready();
 
-// ── Full rebuild ─────────────────────────────────────────────────────────────
+// ── Reconcile ────────────────────────────────────────────────────────────────
+// Preserve existing wrappers across updates — removing a webview from DOM
+// destroys its webContents, so we only add/remove the diff and never re-append
+// surviving nodes.
 
-function fullRebuild(sessions, container, overlay) {
-  container.innerHTML = '';
-  wrappers.clear();
-  dividerEl = null;
+function reconcile(sessions, container, overlay) {
+  const incomingIds = new Set(sessions.map(s => s.id));
+
+  // Drop wrappers no longer present
+  for (const [id, wrap] of [...wrappers]) {
+    if (!incomingIds.has(id)) {
+      wrap.remove();
+      wrappers.delete(id);
+    }
+  }
+
+  // Detach old divider — recreated below if 2 panes
+  if (dividerEl) { dividerEl.remove(); dividerEl = null; }
+
   container.style.flexDirection = splitDir;
+
+  // Append new wrappers; existing wrappers stay where they are
+  sessions.forEach(s => {
+    if (!wrappers.has(s.id)) {
+      const w = createWrapper(s);
+      wrappers.set(s.id, w);
+      container.appendChild(w);
+    }
+  });
 
   if (sessions.length === 0) return;
 
-  const views = sessions.map(s => {
-    const w = createWrapper(s);
-    wrappers.set(s.id, w);
-    return w;
-  });
-
+  const views = sessions.map(s => wrappers.get(s.id));
   setDirStyles(views);
 
   if (views.length === 1) {
     views[0].style.flex = '1';
-    container.appendChild(views[0]);
     return;
   }
 
   views[0].style.flex = String(splitRatio);
   views[1].style.flex = String(1 - splitRatio);
   dividerEl = createDivider(views[0], views[1], container, overlay);
-  container.append(views[0], dividerEl, views[1]);
+  container.insertBefore(dividerEl, views[1]);
 }
 
 // ── In-place updates (no webview reload) ─────────────────────────────────────
@@ -131,6 +150,8 @@ function createWrapper(session) {
   wv.setAttribute('partition', `persist:${session.id}`);
   wv.setAttribute('src', session.url || 'https://universe.flyff.com/play');
   wv.setAttribute('tabindex', '0');
+  // Keep WebGL/timers running when pane unfocused (matches host BrowserWindow setting)
+  wv.setAttribute('webpreferences', 'backgroundThrottling=false');
 
   const label = document.createElement('div');
   label.className = 'session-label';
@@ -156,6 +177,17 @@ function createWrapper(session) {
 
   wrap.append(wv, label);
   return wrap;
+}
+
+function syncLabel(session) {
+  const wrap = wrappers.get(session.id);
+  if (!wrap) return;
+  const label = wrap.querySelector('.session-label');
+  if (!label) return;
+  const dot  = label.querySelector('.dot');
+  const name = label.querySelector('span:last-child');
+  if (dot)  dot.style.background = session.accentColor || '#f59e0b';
+  if (name) name.textContent     = session.name || 'Session';
 }
 
 function applyLockState() {
