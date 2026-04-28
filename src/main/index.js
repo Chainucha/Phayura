@@ -292,6 +292,12 @@ app.whenReady().then(() => {
       if (r.error) errors.push(r.error);
     });
     saveWorkspace(workspace);
+    // Keep manager in foreground after spawning the container window
+    if (dashboard && !dashboard.isDestroyed()) {
+      setImmediate(() => {
+        if (dashboard && !dashboard.isDestroyed()) dashboard.focus();
+      });
+    }
     return errors.length ? { error: errors.join('; ') } : { ok: true };
   });
 
