@@ -15,7 +15,10 @@ let lastIds    = '';
 let locked     = false;
 let initialized = false;
 let hoverEnabled = false;
-let hoverDelayMs = 400;
+// Small delay filters transient cursor passes (e.g. crossing pane on the way
+// to title bar / window controls) so hover-focus doesn't trap the user inside
+// the webview when they're trying to interact with chrome.
+let hoverDelayMs = 120;
 let hoverTimer   = null;
 
 window.gameBridge.onUpdate(({ sessions, preset, lockLayout, applyRatio, savedRatio, hoverFocusEnabled, hoverFocusDelayMs }) => {
@@ -34,7 +37,7 @@ window.gameBridge.onUpdate(({ sessions, preset, lockLayout, applyRatio, savedRat
   locked  = !!lockLayout;
   lastIds = newIds;
   hoverEnabled = !!hoverFocusEnabled;
-  hoverDelayMs = hoverFocusDelayMs || 400;
+  hoverDelayMs = hoverFocusDelayMs ?? 120;
 
   const container = document.getElementById('container');
   const overlay   = document.getElementById('drag-overlay');
@@ -232,6 +235,11 @@ function createWrapper(session) {
   wrap.addEventListener('mouseenter', () => {
     if (!hoverEnabled) return;
     clearTimeout(hoverTimer);
+    if (hoverDelayMs <= 0) {
+      try { document.activeElement?.blur?.(); } catch {}
+      try { wv.focus(); } catch {}
+      return;
+    }
     hoverTimer = setTimeout(() => {
       try { document.activeElement?.blur?.(); } catch {}
       try { wv.focus(); } catch {}

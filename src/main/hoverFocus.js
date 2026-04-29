@@ -1,78 +1,68 @@
 let timer   = null;
 let running = false;
+let timerPeriodSet = false;
 
-// Poll cadence — ms between cursor reads. 8ms ≈ 120Hz, smooth and well above
-// human perception. Each tick is microseconds (GetCursorPos + array find), so
-// CPU cost is negligible. Independent of Electron event-loop backpressure.
-const POLL_MS = 8;
-
-// Rect cache TTL — rebuild bounds every N polls or on miss.
-const CACHE_TTL_MS = 250;
+// Poll cadence — ms between cursor reads. 1ms ≈ 1000Hz; each tick is a few
+// microseconds (GetCursorPos + WindowFromPoint + GetAncestor + small set scan),
+// so CPU cost is negligible. Independent of Electron event-loop backpressure.
+// Effective cadence depends on Windows timer resolution — see timeBeginPeriod
+// call in start() which drops it from default ~15.6ms to 1ms.
+const POLL_MS = 1;
 
 /**
- * Start hover-to-focus. Read-only — no input synthesis.
- * Polls cursor via Win32 GetCursorPos on a setInterval; bypasses uiohook
- * event-queue backpressure that caused noticeable lag under load.
+ * Start hover-to-focus across containers. Read-only — no input synthesis.
+ * Polls cursor via Win32 GetCursorPos, then asks the OS directly which top-level
+ * HWND is under it via WindowFromPoint + GetAncestor(GA_ROOT). No rect cache, so
+ * window moves/resizes never produce stale hits. Per-webview hover-focus inside
+ * a single container lives in the container renderer (game.js), not here.
  */
 function start(getSessions) {
   if (running) return;
 
-  const { getRect, focusWindow } = require('./win32/windowOps');
+  const { focusWindow } = require('./win32/windowOps');
   const w = require('./win32/bindings');
+  const koffi = require('koffi');
 
-  let cache    = [];   // [{ hwnd, x, y, x2, y2 }]
-  let cachedAt = 0;
-  let lastHwnd = null;
+  // koffi opaque-pointer HWNDs come back as External objects, not Numbers, so
+  // `===` against session.hwnd (a JS Number from BigUInt64 cast) never matches.
+  // Extract the raw address and convert to Number for comparison.
+  const hwndNum = (h) => {
+    if (h == null) return 0;
+    if (typeof h === 'number') return h;
+    return Number(koffi.address(h));
+  };
+
+  // Drop system timer resolution to 1ms so setInterval(1) actually fires every
+  // 1ms instead of every ~16ms. Paired with timeEndPeriod(1) in stop().
+  if (w.timeBeginPeriod(1) === 0) timerPeriodSet = true;
+
+  let lastHwnd = 0;
   const ptOut = [{}];
 
-  function rebuildCache() {
-    const sessions = getSessions();
-    const seen = new Set();
-    cache = [];
-    for (const s of sessions) {
-      if (!s.hwnd || seen.has(s.hwnd)) continue;
-      seen.add(s.hwnd);
-      try {
-        const r = getRect(s.hwnd);
-        cache.push({
-          hwnd: s.hwnd,
-          x: r.x, y: r.y,
-          x2: r.x + r.width, y2: r.y + r.height,
-        });
-      } catch { /* dead hwnd — skip */ }
-    }
-    cachedAt = Date.now();
-  }
-
-  function findHit(x, y) {
-    if (lastHwnd) {
-      const last = cache.find(r => r.hwnd === lastHwnd);
-      if (last && x >= last.x && x < last.x2 && y >= last.y && y < last.y2) return last;
-    }
-    return cache.find(r => x >= r.x && x < r.x2 && y >= r.y && y < r.y2);
-  }
-
   timer = setInterval(() => {
-    if (Date.now() - cachedAt > CACHE_TTL_MS) rebuildCache();
-
     if (!w.GetCursorPos(ptOut)) return;
     const { x, y } = ptOut[0];
 
-    let hit = findHit(x, y);
-    if (!hit) {
-      rebuildCache();
-      hit = findHit(x, y);
-    }
-    if (!hit) { lastHwnd = null; return; }
+    const raw = w.WindowFromPoint({ x, y });
+    if (!raw) { lastHwnd = 0; return; }
+    const rootN = hwndNum(w.GetAncestor(raw, w.GA_ROOT));
+    if (!rootN) { lastHwnd = 0; return; }
 
-    if (hit.hwnd === lastHwnd) return;
-    if (w.GetForegroundWindow() === hit.hwnd) {
-      lastHwnd = hit.hwnd;
+    const sessions = getSessions();
+    let owned = false;
+    for (const s of sessions) {
+      if (s.hwnd === rootN) { owned = true; break; }
+    }
+    if (!owned) { lastHwnd = 0; return; }
+
+    if (rootN === lastHwnd) return;
+    if (hwndNum(w.GetForegroundWindow()) === rootN) {
+      lastHwnd = rootN;
       return;
     }
 
-    focusWindow(hit.hwnd);
-    lastHwnd = hit.hwnd;
+    focusWindow(rootN);
+    lastHwnd = rootN;
   }, POLL_MS);
 
   running = true;
@@ -82,6 +72,11 @@ function stop() {
   if (!running) return;
   clearInterval(timer);
   timer = null;
+  if (timerPeriodSet) {
+    const w = require('./win32/bindings');
+    w.timeEndPeriod(1);
+    timerPeriodSet = false;
+  }
   running = false;
 }
 

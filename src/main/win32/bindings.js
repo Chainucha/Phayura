@@ -2,6 +2,7 @@ const koffi = require('koffi');
 
 const user32   = koffi.load('user32.dll');
 const kernel32 = koffi.load('kernel32.dll');
+const winmm    = koffi.load('winmm.dll');
 
 // --- Types ---
 const HWND  = koffi.pointer('HWND',  koffi.opaque());
@@ -38,6 +39,14 @@ const BringWindowToTop    = user32.func('__stdcall', 'BringWindowToTop',    BOOL
 const AttachThreadInput   = user32.func('__stdcall', 'AttachThreadInput',   BOOL, [DWORD, DWORD, BOOL]);
 const GetCurrentThreadId  = kernel32.func('__stdcall', 'GetCurrentThreadId', DWORD, []);
 const GetCursorPos        = user32.func('__stdcall', 'GetCursorPos',        BOOL, [koffi.out(koffi.pointer(POINT))]);
+const WindowFromPoint     = user32.func('__stdcall', 'WindowFromPoint',     HWND, [POINT]);
+const GetAncestor         = user32.func('__stdcall', 'GetAncestor',         HWND, [HWND, UINT]);
+
+const GA_ROOT = 2;
+const GA_ROOTOWNER = 3;
+
+const timeBeginPeriod = winmm.func('__stdcall', 'timeBeginPeriod', UINT, [UINT]);
+const timeEndPeriod   = winmm.func('__stdcall', 'timeEndPeriod',   UINT, [UINT]);
 
 // Deliberately NOT bound: SendInput, keybd_event, mouse_event, PostMessage,
 // ReadProcessMemory, SetWindowsHookEx(keyboard), BitBlt, CreateRemoteThread.
@@ -50,4 +59,6 @@ module.exports = {
   SetWindowPos,
   GetForegroundWindow, SetForegroundWindow, BringWindowToTop,
   AttachThreadInput, GetCurrentThreadId, GetCursorPos,
+  WindowFromPoint, GetAncestor, GA_ROOT, GA_ROOTOWNER,
+  timeBeginPeriod, timeEndPeriod,
 };

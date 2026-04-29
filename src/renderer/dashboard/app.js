@@ -403,7 +403,7 @@ dlgGroup.addEventListener('close', async () => {
 
 // ── Hover Focus toggle ─────────────────────────────────────────────────────
 const btnHover = document.getElementById('btn-hover');
-let hoverDelayMs = 400;
+let hoverDelayMs = 0;
 function renderHover(enabled) {
   btnHover.setAttribute('aria-pressed', String(enabled));
   btnHover.classList.toggle('on', enabled);
@@ -412,7 +412,7 @@ function renderHover(enabled) {
 btnHover.addEventListener('click', async () => {
   const next = btnHover.getAttribute('aria-pressed') !== 'true';
   renderHover(next);
-  await window.sunkist.setHoverFocus(next, hoverDelayMs);
+  await window.sunkist.setHoverFocus(next, 120);
   setStatus(next ? 'Hover focus on' : 'Hover focus off');
 });
 
@@ -435,7 +435,7 @@ async function init() {
   workspace = await window.sunkist.getWorkspace();
   workspace.sessions = workspace.sessions || [];
   workspace.groups   = workspace.groups   || [];
-  hoverDelayMs = workspace.hoverFocusDelayMs || 400;
+  hoverDelayMs = workspace.hoverFocusDelayMs ?? 0;
   renderHover(!!workspace.hoverFocusEnabled);
   renderAll();
 }

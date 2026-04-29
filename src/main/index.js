@@ -69,7 +69,7 @@ function sendGameUpdate(groupId, applyRatio = false) {
     lockLayout: !!group.lockLayout,
     savedRatio: group.splitRatio ?? null,
     hoverFocusEnabled: !!workspace.hoverFocusEnabled,
-    hoverFocusDelayMs: workspace.hoverFocusDelayMs || 400,
+    hoverFocusDelayMs: workspace.hoverFocusDelayMs ?? 120,
     applyRatio,
   });
 }
@@ -365,7 +365,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle(CH.SET_HOVER_FOCUS, (_e, { enabled, delayMs }) => {
     workspace.hoverFocusEnabled = !!enabled;
-    workspace.hoverFocusDelayMs = delayMs || 400;
+    workspace.hoverFocusDelayMs = delayMs ?? 120;
     saveWorkspace(workspace);
     applyHoverFocus();
     workspace.groups.forEach(g => { if (isContainerAlive(g.id)) sendGameUpdate(g.id); });
