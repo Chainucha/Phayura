@@ -20,6 +20,7 @@ const {
 } = require('./focusController');
 const { focusWindow } = require('./win32/windowOps');
 const hoverFocus = require('./hoverFocus');
+const { computeAutoGrid, uniformRatios, fillCellMap } = require('../shared/gridLayoutEngine');
 
 // Single instance — two Phayuras would fight over hotkeys
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
@@ -69,16 +70,44 @@ function sendGameUpdate(groupId) {
   const group = findGroup(groupId);
   if (!group) return;
   const active = sessionsOfGroup(groupId).filter(s => s.state !== 'idle');
+  const N = active.length;
+  const gl = group.layout;
+
+  let layout;
+  if (N === 0) {
+    layout = { cols: 0, rows: 0, colRatios: [], rowRatios: [], cellMap: {}, manual: gl.manual };
+  } else if (N === gl.cols * gl.rows) {
+    // Exact fit — send layout as-is, filtering cellMap to active only for safety
+    const activeIds = new Set(active.map(s => s.id));
+    const cellMap = Object.fromEntries(Object.entries(gl.cellMap).filter(([, v]) => activeIds.has(v)));
+    layout = { ...gl, cellMap };
+  } else {
+    // Active count differs from persisted grid — recompute display layout
+    const win = BrowserWindow.getAllWindows().find(w => getGroupIdByWebContents(w.webContents) === groupId);
+    const { width: W, height: H } = win?.getBounds() ?? { width: 1600, height: 900 };
+    const { cols, rows } = computeAutoGrid(N, W, H);
+    // Preserve order from existing cellMap
+    const activeIds = new Set(active.map(s => s.id));
+    const ordered = [];
+    for (let r = 0; r < gl.rows; r++) {
+      for (let c = 0; c < gl.cols; c++) {
+        const id = gl.cellMap[`${r},${c}`];
+        if (id && activeIds.has(id)) ordered.push(id);
+      }
+    }
+    for (const s of active) if (!ordered.includes(s.id)) ordered.push(s.id);
+    layout = {
+      cols, rows,
+      colRatios: uniformRatios(cols),
+      rowRatios: uniformRatios(rows),
+      cellMap: fillCellMap(ordered.slice(0, cols * rows), cols, rows),
+      manual: false,
+    };
+  }
+
   sendToContainer(groupId, CH.GAME_UPDATE, {
     sessions: active.map(({ id, name, url, accentColor }) => ({ id, name, url, accentColor })),
-    layout: {
-      cols: group.layout.cols,
-      rows: group.layout.rows,
-      colRatios: group.layout.colRatios,
-      rowRatios: group.layout.rowRatios,
-      cellMap: group.layout.cellMap,
-      manual: group.layout.manual,
-    },
+    layout,
     hoverFocusEnabled: !!workspace.hoverFocusEnabled,
     hoverFocusDelayMs: workspace.hoverFocusDelayMs ?? 120,
   });
@@ -232,6 +261,7 @@ app.whenReady().then(() => {
     saveWorkspace(workspace);
     try { await electronSession.fromPartition(`persist:${id}`).clearStorageData(); } catch {}
     rebindGroupHotkeys(target.groupId);
+    if (isContainerAlive(target.groupId)) sendGameUpdate(target.groupId);
     return { ok: true };
   });
 
