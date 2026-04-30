@@ -7,7 +7,7 @@ let hoverDelayMs = 120;
 let hoverTimer   = null;
 let isDragging   = false;
 let zoomedSessionId = null;
-let editModeIds  = new Set();
+let editModeActive = false;
 let saveLayoutPending = false;
 
 const containerEl = () => document.getElementById('container');
@@ -54,7 +54,6 @@ function reconcile() {
     if (!idToCell.has(id) || !sessionsById.has(id)) {
       wrap.remove();
       wrappers.delete(id);
-      editModeIds.delete(id);
     }
   }
 
@@ -74,7 +73,7 @@ function reconcile() {
     const [r, col] = key.split(',').map(n => parseInt(n, 10));
     wrap.style.gridArea = `${r + 1} / ${col + 1} / ${r + 2} / ${col + 2}`;
     wrap.dataset.cell = key;
-    wrap.classList.toggle('edit-mode', editModeIds.has(id));
+    wrap.classList.toggle('edit-mode', editModeActive);
   }
 
   rebuildDividers(c);
@@ -106,6 +105,20 @@ function rebuildDividers(c) {
   }
 }
 
+function lockWebviews() {
+  for (const w of wrappers.values()) {
+    const wv = w.querySelector('webview');
+    if (wv) wv.style.pointerEvents = 'none';
+  }
+}
+
+function unlockWebviews() {
+  for (const w of wrappers.values()) {
+    const wv = w.querySelector('webview');
+    if (wv) wv.style.pointerEvents = '';
+  }
+}
+
 function attachColDividerDrag(el, index) {
   el.addEventListener('mousedown', e => {
     e.preventDefault();
@@ -114,6 +127,7 @@ function attachColDividerDrag(el, index) {
     overlay.style.cursor = 'col-resize';
     overlay.classList.add('active');
     el.classList.add('dragging');
+    lockWebviews();
 
     const startX = e.clientX;
     const ratios = layoutState.colRatios.slice();
@@ -134,6 +148,7 @@ function attachColDividerDrag(el, index) {
     const onUp = async () => {
       overlay.classList.remove('active');
       el.classList.remove('dragging');
+      unlockWebviews();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       await window.gameBridge.updateRatios(layoutState.colRatios, layoutState.rowRatios);
@@ -155,6 +170,7 @@ function attachRowDividerDrag(el, index) {
     overlay.style.cursor = 'row-resize';
     overlay.classList.add('active');
     el.classList.add('dragging');
+    lockWebviews();
 
     const startY = e.clientY;
     const ratios = layoutState.rowRatios.slice();
@@ -175,6 +191,7 @@ function attachRowDividerDrag(el, index) {
     const onUp = async () => {
       overlay.classList.remove('active');
       el.classList.remove('dragging');
+      unlockWebviews();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       await window.gameBridge.updateRatios(layoutState.colRatios, layoutState.rowRatios);
@@ -237,10 +254,10 @@ function createWrapper(session) {
 
   const itemEdit = document.createElement('button');
   itemEdit.className = 'edit-position-item';
-  itemEdit.textContent = editModeIds.has(session.id) ? 'Lock Position' : 'Edit Position';
+  itemEdit.textContent = editModeActive ? 'Lock Positions' : 'Edit Positions';
   itemEdit.addEventListener('click', () => {
     closeMenu();
-    toggleEditMode(session.id, itemEdit);
+    toggleEditMode();
   });
 
   menu.append(itemDash, itemSave, itemEdit);
@@ -295,17 +312,19 @@ function syncLabel(session) {
   if (name) name.textContent     = session.name || 'Session';
 }
 
-function toggleEditMode(sessionId, itemEl) {
-  if (editModeIds.has(sessionId)) editModeIds.delete(sessionId);
-  else                            editModeIds.add(sessionId);
-  const wrap = wrappers.get(sessionId);
-  if (wrap) wrap.classList.toggle('edit-mode', editModeIds.has(sessionId));
-  if (itemEl) itemEl.textContent = editModeIds.has(sessionId) ? 'Lock Position' : 'Edit Position';
+function toggleEditMode() {
+  editModeActive = !editModeActive;
+  const label = editModeActive ? 'Lock Positions' : 'Edit Positions';
+  for (const wrap of wrappers.values()) {
+    wrap.classList.toggle('edit-mode', editModeActive);
+    const btn = wrap.querySelector('.edit-position-item');
+    if (btn) btn.textContent = label;
+  }
 }
 
 function attachLabelDrag(wrap, label, sessionId) {
   label.addEventListener('mousedown', e => {
-    if (!editModeIds.has(sessionId)) return;
+    if (!editModeActive) return;
     if (e.target.closest('.menu-btn') || e.target.closest('.session-menu')) return;
     e.preventDefault();
     e.stopPropagation();
@@ -377,7 +396,7 @@ function applyZoomState() {
 }
 
 window.addEventListener('keydown', e => {
-  if (e.key === 'F12') {
+  if (e.key === 'F10') {
     e.preventDefault();
     e.stopPropagation();
     const focusedId = (() => {
