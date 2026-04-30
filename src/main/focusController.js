@@ -7,6 +7,7 @@ let registered = [];
 // Per-group state: groupId → { sessions, onSwitch }
 const cycleByGroup = new Map();
 let onFullscreen = null;
+let onPaneZoom   = null;
 let containerOn  = false;
 
 // Returns the currently-focused session in a group, derived from session.state.
@@ -56,8 +57,13 @@ function enableContainerHotkeys() {
     const groupId = focusedContainerGroupId();
     if (groupId) onFullscreen?.(groupId);
   });
+  const okF10 = globalShortcut.register('F10', () => {
+    const groupId = focusedContainerGroupId();
+    if (groupId) onPaneZoom?.(groupId);
+  });
   if (!okTab) console.warn('[hotkey] Could not register Tab');
   if (!okF11) console.warn('[hotkey] Could not register F11');
+  if (!okF10) console.warn('[hotkey] Could not register F10');
   containerOn = true;
 }
 
@@ -65,7 +71,12 @@ function disableContainerHotkeys() {
   if (!containerOn) return;
   globalShortcut.unregister('Tab');
   globalShortcut.unregister('F11');
+  globalShortcut.unregister('F10');
   containerOn = false;
+}
+
+function setPaneZoomHandler(fn) {
+  onPaneZoom = fn;
 }
 
 function focusedContainerGroupId() {
@@ -113,5 +124,5 @@ function unbindAll() {
 
 module.exports = {
   bindHotkeys, unbindGroup, unbindAll, cycleFocus,
-  enableContainerHotkeys, disableContainerHotkeys,
+  enableContainerHotkeys, disableContainerHotkeys, setPaneZoomHandler,
 };

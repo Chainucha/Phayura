@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('gameBridge', {
   groupId,
   onUpdate:        (cb) => ipcRenderer.on(CH.GAME_UPDATE,        (_e, data) => cb(data)),
   onFocusWebview:  (cb) => ipcRenderer.on(CH.GAME_FOCUS_WEBVIEW, (_e, data) => cb(data)),
+  onPaneZoom:      (cb) => ipcRenderer.on(CH.GAME_PANE_ZOOM,     (_e)       => cb()),
   ready:           ()   => ipcRenderer.send(CH.GAME_READY),
 
   updateRatios:    (colRatios, rowRatios) => ipcRenderer.invoke(CH.LAYOUT_UPDATE_RATIOS, { groupId, colRatios, rowRatios }),

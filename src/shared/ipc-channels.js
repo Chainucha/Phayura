@@ -31,4 +31,5 @@ module.exports = {
   LAYOUT_RESIZE_HINT:   'layout:resizeHint',
   LAYOUT_TOGGLE_AUTO:   'layout:toggleAuto',
   LAYOUT_SAVE:          'layout:save',
+  GAME_PANE_ZOOM:       'game:paneZoom',
 };

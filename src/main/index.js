@@ -16,7 +16,7 @@ const {
 } = require('./browserInstanceManager');
 const {
   bindHotkeys, unbindGroup, unbindAll,
-  enableContainerHotkeys, disableContainerHotkeys,
+  enableContainerHotkeys, disableContainerHotkeys, setPaneZoomHandler,
 } = require('./focusController');
 const { focusWindow } = require('./win32/windowOps');
 const hoverFocus = require('./hoverFocus');
@@ -194,6 +194,7 @@ function createDashboard() {
 app.whenReady().then(() => {
   createDashboard();
   applyHoverFocus();
+  setPaneZoomHandler((groupId) => sendToContainer(groupId, CH.GAME_PANE_ZOOM, {}));
 
   ipcMain.handle(CH.GET_WORKSPACE, () => workspace);
 

@@ -395,18 +395,14 @@ function applyZoomState() {
   for (const d of dividers) d.el.style.display = zoomedSessionId ? 'none' : '';
 }
 
-window.addEventListener('keydown', e => {
-  if (e.key === 'F10') {
-    e.preventDefault();
-    e.stopPropagation();
-    const focusedId = (() => {
-      for (const [id, w] of wrappers) if (w.classList.contains('focused')) return id;
-      return null;
-    })();
-    zoomedSessionId = (zoomedSessionId || !focusedId) ? null : focusedId;
-    applyZoomState();
-  }
-}, true);
+window.gameBridge.onPaneZoom(() => {
+  const focusedId = (() => {
+    for (const [id, w] of wrappers) if (w.classList.contains('focused')) return id;
+    return null;
+  })();
+  zoomedSessionId = (zoomedSessionId || !focusedId) ? null : focusedId;
+  applyZoomState();
+});
 
 let toastTimer = null;
 function showToast(msg) {
