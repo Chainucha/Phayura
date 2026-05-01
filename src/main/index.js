@@ -118,7 +118,7 @@ function rebindGroupHotkeys(groupId) {
     groupId,
     sessionsOfGroup(groupId),
     (focused) => {
-      sessionsOfGroup(groupId).forEach(s => { if (s.state === 'active') s.state = 'arranged'; });
+      sessionsOfGroup(groupId).forEach(s => { if (s.state === 'active') s.state = 'tracking'; });
       focused.state = 'active';
       sessionsOfGroup(groupId).forEach(s => safeSend(CH.SESSION_STATE_CHANGED, { ...s }));
       sendToContainer(groupId, CH.GAME_FOCUS_WEBVIEW, { id: focused.id });
@@ -297,7 +297,7 @@ app.whenReady().then(() => {
     if (!session?.hwnd) return { error: 'Session has no tracked window' };
     focusWindow(session.hwnd);
     sendToContainer(session.groupId, CH.GAME_FOCUS_WEBVIEW, { id });
-    sessionsOfGroup(session.groupId).forEach(s => { if (s.state === 'active') s.state = 'arranged'; });
+    sessionsOfGroup(session.groupId).forEach(s => { if (s.state === 'active') s.state = 'tracking'; });
     session.state = 'active';
     sessionsOfGroup(session.groupId).forEach(s => safeSend(CH.SESSION_STATE_CHANGED, { ...s }));
     return { ok: true };
@@ -365,7 +365,7 @@ app.whenReady().then(() => {
     maximizeContainer(groupId);
     sendGameUpdate(groupId);
     sessionsOfGroup(groupId).filter(s => s.state !== 'idle').forEach(s => {
-      s.state = 'arranged';
+      s.state = 'tracking';
       safeSend(CH.SESSION_STATE_CHANGED, { ...s });
     });
     return { ok: true };
@@ -383,7 +383,7 @@ app.whenReady().then(() => {
     const session = workspace.sessions.find(s => s.id === id);
     if (!session || session.groupId !== groupId) return;
     if (session.state === 'active') return;
-    sessionsOfGroup(groupId).forEach(s => { if (s.state === 'active') s.state = 'arranged'; });
+    sessionsOfGroup(groupId).forEach(s => { if (s.state === 'active') s.state = 'tracking'; });
     session.state = 'active';
     sessionsOfGroup(groupId).forEach(s => safeSend(CH.SESSION_STATE_CHANGED, { ...s }));
   });

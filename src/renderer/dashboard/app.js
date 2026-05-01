@@ -38,10 +38,11 @@ function renderSidebar() {
   const last = sessions.length - 1;
   list.innerHTML = sessions.map((s, i) => {
     const group = workspace.groups.find(g => g.id === s.groupId);
+    const groupLabel = group?.name || 'ungrouped';
     return `
     <li draggable="true" data-id="${s.id}" data-state="${esc(s.state)}">
       <span class="dot" style="background:${esc(s.accentColor)}"></span>
-      <span class="session-name" title="${esc(s.name)} — ${esc(group?.name || '')}">${esc(s.name)}</span>
+      <span class="session-name" title="${esc(s.name)} — ${esc(groupLabel)}">${esc(s.name)}</span>
       <span class="session-state ${esc(s.state)}">${esc(s.state)}</span>
       <button class="btn-move" data-id="${s.id}" data-dir="up" title="Move up" ${i === 0 ? 'disabled' : ''}>&#9650;</button>
       <button class="btn-move" data-id="${s.id}" data-dir="down" title="Move down" ${i === last ? 'disabled' : ''}>&#9660;</button>
@@ -77,8 +78,36 @@ function renderSidebar() {
 
 function renderGroups() {
   const root = document.getElementById('groups-container');
-  root.innerHTML = workspace.groups.map(g => renderGroupSection(g)).join('');
+  const groupSections = workspace.groups.map(g => renderGroupSection(g)).join('');
+  const ungrouped = renderUngroupedSection();
+  root.innerHTML = groupSections + ungrouped;
   attachGroupHandlers(root);
+}
+
+function renderUngroupedSection() {
+  const sessions = workspace.sessions.filter(s => !s.groupId);
+  const cards = sessions.length === 0
+    ? `<div class="empty-group">No ungrouped sessions. Drop a session here to remove it from its group.</div>`
+    : sessions.map(s => `
+          <div class="session-card" draggable="true" data-id="${s.id}" data-state="${esc(s.state)}"
+               style="border-top: 3px solid ${esc(s.accentColor)}">
+            <div class="card-header">
+              <span class="card-name">${esc(s.name)}</span>
+              <span class="card-state ${esc(s.state)}">${esc(s.state)}</span>
+            </div>
+            <div class="card-actions">
+              <button class="card-btn" data-action="rename" data-id="${s.id}" data-name="${esc(s.name)}">Rename</button>
+              <button class="card-btn danger" data-action="delete" data-id="${s.id}" data-name="${esc(s.name)}">Delete</button>
+            </div>
+          </div>`).join('');
+
+  return `
+    <section class="group-section ungrouped-section" data-group-id="">
+      <header class="group-header">
+        <h2 class="group-title ungrouped-title">Ungrouped</h2>
+      </header>
+      <div class="cards-row">${cards}</div>
+    </section>`;
 }
 
 function renderGroupSection(group) {

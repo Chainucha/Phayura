@@ -96,9 +96,9 @@ function loadWorkspace() {
     saved.groups = [group];
     saved.sessions.forEach(s => { s.groupId = group.id; });
   } else {
-    const fallback = saved.groups[0].id;
     saved.sessions.forEach(s => {
-      if (!s.groupId || !saved.groups.some(g => g.id === s.groupId)) s.groupId = fallback;
+      if (s.groupId && !saved.groups.some(g => g.id === s.groupId)) s.groupId = null;
+      if (s.groupId === undefined) s.groupId = null;
     });
   }
 
@@ -213,9 +213,9 @@ function applyResizeHint(group, sessionIds, W, H) {
 
 function addSession(workspace, name, groupId) {
   const colors = ['#F59E0B', '#06B6D4', '#8B5CF6', '#10B981'];
-  const targetGroupId = groupId && workspace.groups.some(g => g.id === groupId)
+  const targetGroupId = (groupId && workspace.groups.some(g => g.id === groupId))
     ? groupId
-    : workspace.groups[0]?.id;
+    : null;
   const session = {
     id: randomUUID(),
     groupId: targetGroupId,
@@ -271,11 +271,12 @@ function reorderSession(workspace, id, direction) {
 function moveSessionToGroup(workspace, sessionId, groupId) {
   const session = workspace.sessions.find(s => s.id === sessionId);
   if (!session) return null;
-  if (!workspace.groups.some(g => g.id === groupId)) return null;
+  if (groupId !== null && !workspace.groups.some(g => g.id === groupId)) return null;
   if (session.state !== 'idle') return null;
   const fromGroupId = session.groupId;
   session.groupId = groupId;
   [fromGroupId, groupId].forEach(gid => {
+    if (gid === null) return;
     const group = workspace.groups.find(g => g.id === gid);
     if (group) {
       ensureLayoutForCount(group, groupSessionIds(workspace, gid));
@@ -301,16 +302,12 @@ function renameGroup(workspace, id, name) {
 }
 
 function deleteGroup(workspace, id) {
-  if (workspace.groups.length <= 1) return false;
   const idx = workspace.groups.findIndex(g => g.id === id);
   if (idx < 0) return false;
   const hasActive = workspace.sessions.some(s => s.groupId === id && s.state !== 'idle');
   if (hasActive) return false;
-  const fallbackId = workspace.groups.find(g => g.id !== id)?.id;
-  workspace.sessions.forEach(s => { if (s.groupId === id) s.groupId = fallbackId; });
+  workspace.sessions.forEach(s => { if (s.groupId === id) s.groupId = null; });
   workspace.groups.splice(idx, 1);
-  const fallback = workspace.groups.find(g => g.id === fallbackId);
-  if (fallback) ensureLayoutForCount(fallback, groupSessionIds(workspace, fallbackId));
   return true;
 }
 

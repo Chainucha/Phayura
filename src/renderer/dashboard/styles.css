@@ -16,7 +16,7 @@ body { background: #1a1a2e; color: #fff; font-family: system-ui, sans-serif;
 .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .session-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .session-state { font-size: 10px; color: #888; }
-.session-state.tracking, .session-state.arranged { color: #34d399; }
+.session-state.tracking { color: #34d399; }
 .session-state.launching { color: #fbbf24; }
 .session-state.active { color: #60a5fa; }
 .btn-focus { background: transparent; border: none; color: #f59e0b;
