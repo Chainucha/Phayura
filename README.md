@@ -1,4 +1,4 @@
-# Citra
+# Phayura
 
 ToS-compliant multi-client launcher for Flyff Universe. Manage many accounts in side-by-side panes with per-account cookie isolation and global hotkey focus switching — no input injection, no memory reads.
 
