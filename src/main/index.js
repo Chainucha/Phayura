@@ -1,9 +1,9 @@
-const { app, BrowserWindow, ipcMain, session: electronSession } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, session: electronSession } = require('electron');
 const path = require('path');
 const CH = require('../shared/ipc-channels');
 const {
   loadWorkspace, saveWorkspace,
-  addSession, deleteSession, renameSession, reorderSession, moveSessionToGroup,
+  addSession, deleteSession, renameSession, reorderSession, moveSessionToGroup, setSessionMuted,
   addGroup, deleteGroup, renameGroup, updateGroup,
   ensureLayoutForCount, placeSessionInLayout,
   setLayoutRatios, swapLayoutCells, setLayoutManual, applyResizeHint,
@@ -106,7 +106,7 @@ function sendGameUpdate(groupId) {
   }
 
   sendToContainer(groupId, CH.GAME_UPDATE, {
-    sessions: active.map(({ id, name, url, accentColor }) => ({ id, name, url, accentColor })),
+    sessions: active.map(({ id, name, url, accentColor, muted }) => ({ id, name, url, accentColor, muted: !!muted })),
     layout,
     hoverFocusEnabled: !!workspace.hoverFocusEnabled,
     hoverFocusDelayMs: workspace.hoverFocusDelayMs ?? 120,
@@ -217,10 +217,11 @@ function createDashboard() {
     },
   });
   dashboard.loadFile(path.join(__dirname, '../renderer/dashboard/index.html'));
-  if (process.env.NODE_ENV === 'dev') dashboard.webContents.openDevTools();
+  if (!app.isPackaged) dashboard.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {
+  if (app.isPackaged) Menu.setApplicationMenu(null);
   createDashboard();
   applyHoverFocus();
   setPaneZoomHandler((groupId) => sendToContainer(groupId, CH.GAME_PANE_ZOOM, {}));
@@ -282,6 +283,17 @@ app.whenReady().then(() => {
     if (target && isContainerAlive(target.groupId)) sendGameUpdate(target.groupId);
     if (target) rebindGroupHotkeys(target.groupId);
     return { ok: true, sessions: workspace.sessions.map(s => ({ ...s })) };
+  });
+
+  ipcMain.handle(CH.SESSION_SET_MUTED, (_e, { id, muted }) => {
+    const session = setSessionMuted(workspace, id, muted);
+    if (!session) return { error: 'Session not found' };
+    saveWorkspace(workspace);
+    safeSend(CH.SESSION_STATE_CHANGED, { ...session });
+    if (isContainerAlive(session.groupId)) {
+      sendToContainer(session.groupId, CH.GAME_SET_MUTED, { id: session.id, muted: session.muted });
+    }
+    return { ok: true, session: { ...session } };
   });
 
   ipcMain.handle(CH.MOVE_SESSION_GROUP, (_e, { sessionId, groupId }) => {

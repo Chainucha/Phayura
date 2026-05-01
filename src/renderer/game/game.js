@@ -22,7 +22,25 @@ window.gameBridge.onUpdate(({ sessions, layout, hoverFocusEnabled, hoverFocusDel
 
   reconcile();
   sessions.forEach(syncLabel);
+  sessions.forEach(s => applyMute(s.id, !!s.muted));
 });
+
+window.gameBridge.onSetMuted(({ id, muted }) => {
+  const s = sessionsById.get(id);
+  if (s) s.muted = !!muted;
+  applyMute(id, !!muted);
+});
+
+function applyMute(sessionId, muted) {
+  const wrap = wrappers.get(sessionId);
+  const wv = wrap?.querySelector('webview');
+  if (!wv) return;
+  const set = () => { try { wv.setAudioMuted(muted); } catch {} };
+  if (wv.getWebContentsId) {
+    try { wv.getWebContentsId(); set(); return; } catch {}
+  }
+  wv.addEventListener('dom-ready', set, { once: true });
+}
 
 window.gameBridge.onFocusWebview(({ id }) => {
   const wrap = wrappers.get(id);
@@ -215,6 +233,16 @@ function createWrapper(session) {
   wv.setAttribute('src', session.url || 'https://universe.flyff.com/play');
   wv.setAttribute('tabindex', '0');
   wv.setAttribute('webpreferences', 'backgroundThrottling=false');
+
+  const hideScrollbarsCSS = `
+    html, body { overflow: hidden !important; scrollbar-width: none !important; -ms-overflow-style: none !important; }
+    *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+  `;
+  const injectCSS = () => { try { wv.insertCSS(hideScrollbarsCSS); } catch {} };
+  wv.addEventListener('dom-ready', injectCSS);
+  wv.addEventListener('did-navigate',          injectCSS);
+  wv.addEventListener('did-navigate-in-page',  injectCSS);
+  wv.addEventListener('did-frame-finish-load', injectCSS);
 
   const label = document.createElement('div');
   label.className = 'session-label';

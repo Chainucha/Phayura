@@ -1,4 +1,4 @@
-const { BrowserWindow } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
 const containers = new Map(); // groupId → BrowserWindow
@@ -10,7 +10,7 @@ function ensureContainer(groupId, onClosedOnce) {
   win = new BrowserWindow({
     width: 1280,
     height: 720,
-    autoHideMenuBar: true,
+    autoHideMenuBar: app.isPackaged,
     icon: path.join(__dirname, '../../assets/icon.ico'),
     webPreferences: {
       nodeIntegration: false,
@@ -25,7 +25,7 @@ function ensureContainer(groupId, onClosedOnce) {
 
   win.maximize();
   win.loadFile(path.join(__dirname, '../renderer/game/index.html'));
-  if (process.env.NODE_ENV === 'dev') {
+  if (!app.isPackaged) {
     win.webContents.openDevTools({ mode: 'detach' });
   }
   win.on('closed', () => {

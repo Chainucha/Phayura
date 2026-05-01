@@ -29,6 +29,7 @@ window.phayura.onSessionChanged((updated) => {
 
 function renderAll() {
   renderSidebar();
+  renderUngrouped();
   renderGroups();
 }
 
@@ -46,6 +47,7 @@ function renderSidebar() {
       <span class="session-state ${esc(s.state)}">${esc(s.state)}</span>
       <button class="btn-move" data-id="${s.id}" data-dir="up" title="Move up" ${i === 0 ? 'disabled' : ''}>&#9650;</button>
       <button class="btn-move" data-id="${s.id}" data-dir="down" title="Move down" ${i === last ? 'disabled' : ''}>&#9660;</button>
+      <button class="btn-mute ${s.muted ? 'muted' : ''}" data-id="${s.id}" data-muted="${s.muted ? '1' : '0'}" title="${s.muted ? 'Unmute' : 'Mute'}">${s.muted ? '&#128263;' : '&#128266;'}</button>
       <button class="btn-rename" data-id="${s.id}" data-name="${esc(s.name)}" title="Rename">&#9998;</button>
       ${s.hwnd ? `<button class="btn-focus" data-id="${s.id}">&#9654;</button>` : ''}
     </li>`;
@@ -55,6 +57,17 @@ function renderSidebar() {
     b.addEventListener('click', () => window.phayura.focusSession(b.dataset.id)));
   list.querySelectorAll('.btn-rename').forEach(b =>
     b.addEventListener('click', () => openRename(b.dataset.id, b.dataset.name)));
+  list.querySelectorAll('.btn-mute').forEach(b =>
+    b.addEventListener('click', async () => {
+      const next = b.dataset.muted !== '1';
+      const r = await window.phayura.setSessionMuted(b.dataset.id, next);
+      if (r?.error) { setStatus(r.error, true); return; }
+      if (r?.session) {
+        const idx = workspace.sessions.findIndex(s => s.id === r.session.id);
+        if (idx >= 0) workspace.sessions[idx] = { ...workspace.sessions[idx], ...r.session };
+      }
+      renderAll();
+    }));
   list.querySelectorAll('.btn-move').forEach(b =>
     b.addEventListener('click', async () => {
       const r = await window.phayura.reorderSession(b.dataset.id, b.dataset.dir);
@@ -78,36 +91,82 @@ function renderSidebar() {
 
 function renderGroups() {
   const root = document.getElementById('groups-container');
-  const groupSections = workspace.groups.map(g => renderGroupSection(g)).join('');
-  const ungrouped = renderUngroupedSection();
-  root.innerHTML = groupSections + ungrouped;
+  root.innerHTML = workspace.groups.map(g => renderGroupSection(g)).join('');
   attachGroupHandlers(root);
 }
 
-function renderUngroupedSection() {
+function renderUngrouped() {
+  const root = document.getElementById('ungrouped-list');
   const sessions = workspace.sessions.filter(s => !s.groupId);
-  const cards = sessions.length === 0
-    ? `<div class="empty-group">No ungrouped sessions. Drop a session here to remove it from its group.</div>`
+  document.getElementById('ungrouped-count').textContent = sessions.length;
+  root.innerHTML = sessions.length === 0
+    ? `<div class="empty-group">Drop a session here to ungroup.</div>`
     : sessions.map(s => `
-          <div class="session-card" draggable="true" data-id="${s.id}" data-state="${esc(s.state)}"
-               style="border-top: 3px solid ${esc(s.accentColor)}">
-            <div class="card-header">
-              <span class="card-name">${esc(s.name)}</span>
-              <span class="card-state ${esc(s.state)}">${esc(s.state)}</span>
-            </div>
-            <div class="card-actions">
-              <button class="card-btn" data-action="rename" data-id="${s.id}" data-name="${esc(s.name)}">Rename</button>
-              <button class="card-btn danger" data-action="delete" data-id="${s.id}" data-name="${esc(s.name)}">Delete</button>
-            </div>
-          </div>`).join('');
+        <div class="ungrouped-item" draggable="true" data-id="${s.id}" data-state="${esc(s.state)}">
+          <span class="dot" style="background:${esc(s.accentColor)}"></span>
+          <span class="ungrouped-name" title="${esc(s.name)}">${esc(s.name)}</span>
+          <button class="btn-rename" data-action="rename" data-id="${s.id}" data-name="${esc(s.name)}" title="Rename">&#9998;</button>
+          <button class="btn-rename danger" data-action="delete" data-id="${s.id}" data-name="${esc(s.name)}" title="Delete">&#10005;</button>
+        </div>`).join('');
 
-  return `
-    <section class="group-section ungrouped-section" data-group-id="">
-      <header class="group-header">
-        <h2 class="group-title ungrouped-title">Ungrouped</h2>
-      </header>
-      <div class="cards-row">${cards}</div>
-    </section>`;
+  attachUngroupedHandlers(root);
+}
+
+function attachUngroupedHandlers(root) {
+  root.querySelectorAll('button[data-action]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const { action, id, name } = b.dataset;
+      if (action === 'rename') {
+        openRename(id, name);
+      } else if (action === 'delete') {
+        if (!confirm(`Delete session "${name}"? Cookies and storage for this account will be removed on next launch.`)) return;
+        const r = await window.phayura.deleteSession(id);
+        if (r.error) { setStatus(r.error, true); return; }
+        workspace.sessions = workspace.sessions.filter(s => s.id !== id);
+        renderAll();
+        setStatus('Deleted');
+      }
+    });
+  });
+
+  root.querySelectorAll('.ungrouped-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      if (item.dataset.state !== 'idle') { e.preventDefault(); return; }
+      e.dataTransfer.setData('text/session-id', item.dataset.id);
+      e.dataTransfer.effectAllowed = 'move';
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => item.classList.remove('dragging'));
+  });
+}
+
+function initUngroupedDropZone() {
+  const details = document.getElementById('ungrouped-details');
+  const root = document.getElementById('ungrouped-list');
+  details.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    details.classList.add('drag-over');
+    if (!details.open) details.open = true;
+  });
+  details.addEventListener('dragleave', e => {
+    if (!details.contains(e.relatedTarget)) details.classList.remove('drag-over');
+  });
+  details.addEventListener('drop', async e => {
+    e.preventDefault();
+    details.classList.remove('drag-over');
+    const sessionId = e.dataTransfer.getData('text/session-id');
+    const session = workspace.sessions.find(s => s.id === sessionId);
+    if (!session || session.groupId === null) return;
+    const r = await window.phayura.moveSessionToGroup(sessionId, null);
+    if (r?.error) { setStatus(r.error, true); return; }
+    if (r?.session) {
+      const idx = workspace.sessions.findIndex(s => s.id === r.session.id);
+      if (idx >= 0) workspace.sessions[idx] = { ...workspace.sessions[idx], ...r.session };
+    }
+    renderAll();
+    setStatus('Ungrouped');
+  });
 }
 
 function renderGroupSection(group) {
@@ -125,11 +184,12 @@ function renderGroupSection(group) {
               <span class="card-state ${esc(s.state)}">${esc(s.state)}</span>
             </div>
             <div class="card-actions">
-              <button class="card-btn" data-action="rename" data-id="${s.id}" data-name="${esc(s.name)}">Rename</button>
               ${s.state === 'idle'
                 ? `<button class="card-btn" data-action="launch" data-id="${s.id}">Launch</button>
-                   <button class="card-btn danger" data-action="delete" data-id="${s.id}" data-name="${esc(s.name)}">Delete</button>`
-                : `<button class="card-btn danger" data-action="close" data-id="${s.id}">Close</button>`}
+                   <button class="card-btn" data-action="mute" data-id="${s.id}" data-muted="${s.muted ? '1' : '0'}">${s.muted ? '🔇 Unmute' : '🔊 Mute'}</button>
+                   <button class="card-btn danger" data-action="remove" data-id="${s.id}" data-name="${esc(s.name)}">Remove</button>`
+                : `<button class="card-btn" data-action="mute" data-id="${s.id}" data-muted="${s.muted ? '1' : '0'}">${s.muted ? '🔇 Unmute' : '🔊 Mute'}</button>
+                   <button class="card-btn danger" data-action="close" data-id="${s.id}">Close</button>`}
             </div>
           </div>`).join('');
 
@@ -173,6 +233,25 @@ function attachGroupHandlers(root) {
         setStatus('Closed');
       } else if (action === 'rename') {
         openRename(id, name);
+      } else if (action === 'mute') {
+        const next = b.dataset.muted !== '1';
+        const r = await window.phayura.setSessionMuted(id, next);
+        if (r?.error) { setStatus(r.error, true); return; }
+        if (r?.session) {
+          const idx = workspace.sessions.findIndex(s => s.id === r.session.id);
+          if (idx >= 0) workspace.sessions[idx] = { ...workspace.sessions[idx], ...r.session };
+        }
+        renderAll();
+        setStatus(next ? 'Muted' : 'Unmuted');
+      } else if (action === 'remove') {
+        const r = await window.phayura.moveSessionToGroup(id, null);
+        if (r?.error) { setStatus(r.error, true); return; }
+        if (r?.session) {
+          const idx = workspace.sessions.findIndex(s => s.id === r.session.id);
+          if (idx >= 0) workspace.sessions[idx] = { ...workspace.sessions[idx], ...r.session };
+        }
+        renderAll();
+        setStatus('Removed from group');
       } else if (action === 'delete') {
         if (!confirm(`Delete session "${name}"? Cookies and storage for this account will be removed on next launch.`)) return;
         const r = await window.phayura.deleteSession(id);
@@ -213,7 +292,7 @@ function attachGroupHandlers(root) {
       e.preventDefault();
       section.classList.remove('drag-over');
       const sessionId = e.dataTransfer.getData('text/session-id');
-      const groupId = section.dataset.groupId;
+      const groupId = section.dataset.groupId === '' ? null : section.dataset.groupId;
       const session = workspace.sessions.find(s => s.id === sessionId);
       if (!session || session.groupId === groupId) return;
       const r = await window.phayura.moveSessionToGroup(sessionId, groupId);
@@ -257,7 +336,7 @@ function attachGroupHandlers(root) {
       } else if (groupAction === 'rename') {
         openGroupDialog('rename', id, name);
       } else if (groupAction === 'delete') {
-        if (!confirm(`Delete group "${name}"? Sessions will be moved to another group.`)) return;
+        if (!confirm(`Delete group "${name}"? Sessions will be moved to Ungrouped.`)) return;
         const r = await window.phayura.deleteGroup(id);
         if (r.error) { setStatus(r.error, true); return; }
         if (r.workspace) workspace = r.workspace;
@@ -265,8 +344,7 @@ function attachGroupHandlers(root) {
         setStatus('Group deleted');
       } else if (groupAction === 'add-session') {
         dlgInput.value = `Account ${workspace.sessions.length + 1}`;
-        dlgGroupSel.innerHTML = workspace.groups.map(g =>
-          `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+        dlgGroupSel.innerHTML = buildGroupOptions();
         dlgGroupSel.value = id;
         dlgGroupSel.disabled = true;
         addSubmit = false;
@@ -296,10 +374,15 @@ const dlgInput    = document.getElementById('dlg-add-input');
 const dlgGroupSel = document.getElementById('dlg-add-group');
 let addSubmit = false;
 
+function buildGroupOptions() {
+  const groupOpts = workspace.groups.map(g =>
+    `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+  return groupOpts + `<option value="">(Ungrouped)</option>`;
+}
+
 document.getElementById('btn-add').addEventListener('click', () => {
   dlgInput.value = `Account ${workspace.sessions.length + 1}`;
-  dlgGroupSel.innerHTML = workspace.groups.map(g =>
-    `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+  dlgGroupSel.innerHTML = buildGroupOptions();
   addSubmit = false;
   dlgAdd.showModal();
   dlgInput.select();
@@ -313,7 +396,8 @@ dlgAdd.addEventListener('close', async () => {
   if (!addSubmit) return;
   const name = dlgInput.value.trim();
   if (!name) return;
-  const r = await window.phayura.addSession(name, dlgGroupSel.value);
+  const groupId = dlgGroupSel.value === '' ? null : dlgGroupSel.value;
+  const r = await window.phayura.addSession(name, groupId);
   if (r?.error) { setStatus(r.error, true); return; }
   workspace.sessions.push(r);
   renderAll();
@@ -415,6 +499,7 @@ async function init() {
   workspace.groups   = workspace.groups   || [];
   hoverDelayMs = workspace.hoverFocusDelayMs ?? 0;
   renderHover(!!workspace.hoverFocusEnabled);
+  initUngroupedDropZone();
   renderAll();
 }
 

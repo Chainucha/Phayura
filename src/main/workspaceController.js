@@ -87,7 +87,10 @@ function loadWorkspace() {
     };
   }
   saved.sessions = saved.sessions || [];
-  saved.sessions.forEach(s => { s.hwnd = null; s.pid = null; s.state = 'idle'; });
+  saved.sessions.forEach(s => {
+    s.hwnd = null; s.pid = null; s.state = 'idle';
+    if (typeof s.muted !== 'boolean') s.muted = true;
+  });
 
   if (!Array.isArray(saved.groups) || saved.groups.length === 0) {
     const group = makeDefaultGroup();
@@ -224,6 +227,7 @@ function addSession(workspace, name, groupId) {
     url: 'https://universe.flyff.com/play',
     hotkey: null,
     accentColor: colors[workspace.sessions.length % colors.length],
+    muted: true,
     hwnd: null,
     pid: null,
     state: 'idle',
@@ -246,6 +250,13 @@ function deleteSession(workspace, id) {
   const group = workspace.groups.find(g => g.id === groupId);
   if (group) ensureLayoutForCount(group, groupSessionIds(workspace, group.id));
   return true;
+}
+
+function setSessionMuted(workspace, id, muted) {
+  const session = workspace.sessions.find(s => s.id === id);
+  if (!session) return null;
+  session.muted = !!muted;
+  return session;
 }
 
 function renameSession(workspace, id, name) {
@@ -323,7 +334,7 @@ function updateGroup(workspace, id, patch) {
 
 module.exports = {
   loadWorkspace, saveWorkspace,
-  addSession, deleteSession, renameSession, reorderSession, moveSessionToGroup,
+  addSession, deleteSession, renameSession, reorderSession, moveSessionToGroup, setSessionMuted,
   addGroup, deleteGroup, renameGroup, updateGroup,
   ensureLayoutForCount, placeSessionInLayout,
   setLayoutRatios, swapLayoutCells, setLayoutManual, applyResizeHint,

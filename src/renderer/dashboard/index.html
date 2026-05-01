@@ -14,15 +14,18 @@
       <h1 class="logo">PHAYURA</h1>
       <p class="section-label">SESSIONS</p>
       <ul id="session-list"></ul>
+      <details id="ungrouped-details" class="ungrouped-details" style="margin-top:16px;">
+        <summary class="ungrouped-summary">UNGROUPED <span id="ungrouped-count" class="ungrouped-count">0</span></summary>
+        <div id="ungrouped-list" class="ungrouped-list" data-group-id=""></div>
+      </details>
       <button id="btn-add">+ Add Session</button>
       <button id="btn-add-group">+ Add Group</button>
+
+      
     </aside>
 
     <!-- Main panel -->
     <main id="main-panel">
-      <!-- Group sections render here -->
-      <div id="groups-container"></div>
-
       <!-- Global actions -->
       <section class="panel-section">
         <div class="action-row">
@@ -31,15 +34,15 @@
           <span id="status-msg" class="status"></span>
         </div>
       </section>
-
+<!-- Group sections render here -->
+      <div id="groups-container"></div>
       <!-- Hotkey reference -->
       <section class="panel-section">
         <p class="section-label">HOTKEYS</p>
         <table id="hotkey-table" class="hotkey-table">
-          <!-- <tr><td>Ctrl+Alt+1</td><td>Focus Session 1</td></tr>
-          <tr><td>Ctrl+Alt+2</td><td>Focus Session 2</td></tr> -->
           <tr><td>Tab</td><td>Cycle Focus (only inside a group window)</td></tr>
           <tr><td>F11</td><td>Toggle Fullscreen (only inside a group window)</td></tr>
+          <tr><td>F10</td><td>Toggle Pane Fullscreen (only inside a group window)</td></tr>
         </table>
         <p class="note">Hotkeys change which window is in front. They are never sent to the game.</p>
       </section>

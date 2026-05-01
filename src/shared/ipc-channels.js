@@ -32,4 +32,6 @@ module.exports = {
   LAYOUT_TOGGLE_AUTO:   'layout:toggleAuto',
   LAYOUT_SAVE:          'layout:save',
   GAME_PANE_ZOOM:       'game:paneZoom',
+  GAME_SET_MUTED:       'game:setMuted',
+  SESSION_SET_MUTED:    'session:setMuted',
 };

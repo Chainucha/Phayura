@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('gameBridge', {
   onUpdate:        (cb) => ipcRenderer.on(CH.GAME_UPDATE,        (_e, data) => cb(data)),
   onFocusWebview:  (cb) => ipcRenderer.on(CH.GAME_FOCUS_WEBVIEW, (_e, data) => cb(data)),
   onPaneZoom:      (cb) => ipcRenderer.on(CH.GAME_PANE_ZOOM,     (_e)       => cb()),
+  onSetMuted:      (cb) => ipcRenderer.on(CH.GAME_SET_MUTED,     (_e, data) => cb(data)),
   ready:           ()   => ipcRenderer.send(CH.GAME_READY),
 
   updateRatios:    (colRatios, rowRatios) => ipcRenderer.invoke(CH.LAYOUT_UPDATE_RATIOS, { groupId, colRatios, rowRatios }),
