@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -26,7 +29,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Citra ${{ github.ref_name }}
+          name: Phayura ${{ github.ref_name }}
           files: dist/*.exe
           generate_release_notes: true
         env:
