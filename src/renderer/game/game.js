@@ -227,7 +227,7 @@ function createWrapper(session) {
   wv.setAttribute('partition', `persist:${session.id}`);
   wv.setAttribute('src', session.url || 'https://universe.flyff.com/play');
   wv.setAttribute('tabindex', '0');
-  wv.setAttribute('webpreferences', 'backgroundThrottling=false');
+  wv.setAttribute('webpreferences', 'backgroundThrottling=false,spellcheck=false');
 
   const hideScrollbarsCSS = `
     html, body { overflow: hidden !important; scrollbar-width: none !important; -ms-overflow-style: none !important; }

@@ -37,6 +37,15 @@ app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization');
 app.commandLine.appendSwitch('force_high_performance_gpu');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=384 --max-semi-space-size=64');
+// Same-site (universe.flyff.com) collapse: drop strict origin isolation so all
+// Flyff webviews can share one renderer process. Cookies stay isolated by
+// StoragePartition (cookie store is independent of process).
+app.commandLine.appendSwitch('disable-features', 'IsolateOrigins,site-per-process');
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+app.commandLine.appendSwitch('renderer-process-limit', '1');
+// Shared V8 bytecode cache across partitions — Flyff JS compiled once, reused
+// across sessions. Saves cold-start CPU; small RAM benefit.
+app.commandLine.appendSwitch('code-cache-dir', path.join(app.getPath('userData'), 'CodeCache'));
 
 const workspace = loadWorkspace();
 
