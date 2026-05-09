@@ -225,6 +225,7 @@ body { background: var(--bg-base); color: var(--text); font-family: system-ui, s
 #dlg-add, #dlg-rename, #dlg-group {
   background: var(--bg-sidebar); border: 1px solid var(--border); border-radius: 8px;
   color: var(--text); padding: 20px; min-width: 300px;
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0;
 }
 #dlg-add::backdrop, #dlg-rename::backdrop, #dlg-group::backdrop { background: rgba(0,0,0,0.6); }
 #dlg-add-input, #dlg-rename-input, #dlg-group-input, #dlg-add-group {

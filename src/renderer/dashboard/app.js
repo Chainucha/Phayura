@@ -418,6 +418,7 @@ function buildGroupOptions() {
 document.getElementById('btn-add').addEventListener('click', () => {
   dlgInput.value = `Account ${workspace.sessions.length + 1}`;
   dlgGroupSel.innerHTML = buildGroupOptions();
+  dlgGroupSel.value = workspace.groups[0]?.id ?? '';
   addSubmit = false;
   dlgAdd.showModal();
   dlgInput.select();

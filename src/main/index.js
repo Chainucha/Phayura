@@ -245,7 +245,9 @@ function createDashboard() {
     },
   });
   dashboard.loadFile(path.join(__dirname, '../renderer/dashboard/index.html'));
-  attachFocusTracking(dashboard);
+  // Dashboard does NOT arm session hotkeys: globalShortcut intercepts at OS level
+  // and would block keystrokes in input fields (add/rename dialogs). Session
+  // hotkeys are only meaningful when a container window is focused.
   if (!app.isPackaged) dashboard.webContents.openDevTools();
 }
 
