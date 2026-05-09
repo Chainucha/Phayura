@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('citra', {
   renameSession:   (id, name) => ipcRenderer.invoke(CH.RENAME_SESSION, { id, name }),
   moveSessionToGroup: (sessionId, groupId, beforeId) => ipcRenderer.invoke(CH.MOVE_SESSION_GROUP, { sessionId, groupId, beforeId }),
   setSessionMuted: (id, muted) => ipcRenderer.invoke(CH.SESSION_SET_MUTED, { id, muted }),
+  openKofi:        () => ipcRenderer.send(CH.OPEN_KOFI),
   // Group ops
   addGroup:        (name)   => ipcRenderer.invoke(CH.ADD_GROUP,    { name }),
   renameGroup:     (id, name) => ipcRenderer.invoke(CH.RENAME_GROUP, { id, name }),

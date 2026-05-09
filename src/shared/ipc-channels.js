@@ -16,6 +16,7 @@ module.exports = {
   LAUNCH_GROUP:         'group:launch',
   CLOSE_GROUP:          'group:close',
   OPEN_DASHBOARD:       'dashboard:open',
+  OPEN_KOFI:            'app:openKofi',
   SESSION_STATE_CHANGED:'session:stateChanged',
   SET_HOVER_FOCUS:      'settings:setHoverFocus',
   GAME_UPDATE:          'game:update',

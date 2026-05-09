@@ -490,6 +490,10 @@ document.getElementById('btn-add-group').addEventListener('click', () => {
   openGroupDialog('add');
 });
 
+document.getElementById('btn-kofi').addEventListener('click', () => {
+  window.citra.openKofi();
+});
+
 dlgGroup.querySelector('form').addEventListener('submit', () => { groupSubmit = true; });
 document.getElementById('dlg-group-cancel').addEventListener('click', () => dlgGroup.close());
 

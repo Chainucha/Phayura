@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, session: electronSession } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, session: electronSession, shell } = require('electron');
 const path = require('path');
 const CH = require('../shared/ipc-channels');
 const {
@@ -426,6 +426,10 @@ app.whenReady().then(() => {
     sessionsOfGroup(groupId).forEach(s => { if (s.state === 'active') s.state = 'tracking'; });
     session.state = 'active';
     sessionsOfGroup(groupId).forEach(s => safeSend(CH.SESSION_STATE_CHANGED, { ...s }));
+  });
+
+  ipcMain.on(CH.OPEN_KOFI, () => {
+    shell.openExternal('https://ko-fi.com/chainucha').catch(() => {});
   });
 
   ipcMain.on(CH.OPEN_DASHBOARD, () => {

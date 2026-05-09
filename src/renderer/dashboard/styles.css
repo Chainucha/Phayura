@@ -30,7 +30,7 @@ body { background: var(--bg-base); color: var(--text); font-family: system-ui, s
 .logo { color: var(--accent); font-size: 18px; font-weight: 700; margin-bottom: 24px; }
 .section-label { color: var(--text-mute); font-size: 10px; letter-spacing: .08em;
                  text-transform: uppercase; margin-bottom: 8px; }
-#session-list { list-style: none; flex: 1; }
+#session-list { list-style: none; flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 #session-list li { display: flex; align-items: center; gap: 10px; padding: 10px 8px;
                    font-size: 15px; border-radius: 6px; cursor: grab; margin-bottom: 2px; }
 #session-list li:hover { background: var(--bg-card); }
@@ -55,6 +55,50 @@ body { background: var(--bg-base); color: var(--text); font-family: system-ui, s
            padding: 6px 10px; cursor: pointer; font-size: 12px; border-radius: 4px;
            margin-top: 8px; }
 #btn-add:hover, #btn-add-group:hover { border-color: var(--accent); color: var(--accent); }
+.btn-kofi {
+  background: #29abe0;
+  border: none; color: #fff;
+  padding: 10px 16px; cursor: pointer; font-size: 14px; font-weight: 700;
+  border-radius: 8px; margin-top: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(41, 171, 224, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.15s;
+  flex-shrink: 0;
+}
+.btn-kofi .kofi-icon { flex-shrink: 0; overflow: visible; }
+
+.btn-kofi .kofi-heart {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: kofi-heart-beat 1.2s ease-in-out infinite;
+}
+@keyframes kofi-heart-beat {
+  0%, 100% { transform: scale(1); }
+  20%      { transform: scale(1.18); }
+  40%      { transform: scale(0.95); }
+  60%      { transform: scale(1.08); }
+}
+
+.btn-kofi .kofi-steam path {
+  stroke: #fff; stroke-width: 1.4; stroke-linecap: round; fill: none;
+  opacity: 0;
+  transform-box: fill-box;
+}
+.btn-kofi .kofi-steam-1 { animation: kofi-steam 1.6s ease-in-out infinite; }
+.btn-kofi .kofi-steam-2 { animation: kofi-steam 1.6s ease-in-out 0.4s infinite; }
+.btn-kofi .kofi-steam-3 { animation: kofi-steam 1.6s ease-in-out 0.8s infinite; }
+@keyframes kofi-steam {
+  0%   { opacity: 0; transform: translateY(4px); }
+  30%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+.btn-kofi:hover {
+  background: #1a90c2;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(41, 171, 224, 0.55);
+}
+.btn-kofi:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(41, 171, 224, 0.4); }
 
 /* Main panel */
 #main-panel { flex: 1; padding: 24px; overflow-y: auto; }

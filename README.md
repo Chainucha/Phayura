@@ -27,7 +27,7 @@ The main process owns all OS-level state (HWNDs, hotkeys, workspace persistence)
 1. Go to the [Releases](../../releases/latest) page.
 2. Download `Phayura-Setup-*.exe`.
 3. Run the installer — no admin rights required.
-
+                            
 Phayura auto-updates are not yet implemented; check Releases for new versions manually.
 
 ## Compliance boundary
