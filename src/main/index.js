@@ -10,7 +10,7 @@ const {
   groupSessionIds,
 } = require('./workspaceController');
 const {
-  ensureContainer, sendToContainer, getContainerHwnd, destroyContainer,
+  ensureContainer, sendToContainer, getContainerHwnd, focusContainer, destroyContainer,
   isContainerAlive, maximizeContainer, toggleFullscreenContainer,
   getGroupIdByWebContents, isAnyContainerAlive,
 } = require('./browserInstanceManager');
@@ -19,7 +19,6 @@ const {
   enableContainerHotkeys, disableContainerHotkeys, setPaneZoomHandler,
   enableSessionHotkeys, disableSessionHotkeys,
 } = require('./focusController');
-const { focusWindow } = require('./win32/windowOps');
 const hoverFocus = require('./hoverFocus');
 
 // Single instance — two Citras would fight over hotkeys
@@ -346,7 +345,7 @@ app.whenReady().then(() => {
   ipcMain.handle(CH.FOCUS_SESSION, (_e, { id }) => {
     const session = workspace.sessions.find(s => s.id === id);
     if (!session?.hwnd) return { error: 'Session has no tracked window' };
-    focusWindow(session.hwnd);
+    focusContainer(session.groupId);
     sendToContainer(session.groupId, CH.GAME_FOCUS_WEBVIEW, { id });
     sessionsOfGroup(session.groupId).forEach(s => { if (s.state === 'active') s.state = 'tracking'; });
     session.state = 'active';
