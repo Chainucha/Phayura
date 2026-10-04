@@ -48,6 +48,13 @@ function getContainerHwnd(groupId) {
   return Number(win.getNativeWindowHandle().readBigUInt64LE(0));
 }
 
+function focusContainer(groupId) {
+  const win = containers.get(groupId);
+  if (!win || win.isDestroyed()) return false;
+  win.focus();
+  return true;
+}
+
 function destroyContainer(groupId) {
   const win = containers.get(groupId);
   if (!win) return;
@@ -90,7 +97,7 @@ function isAnyContainerAlive() {
 }
 
 module.exports = {
-  ensureContainer, sendToContainer, getContainerHwnd,
+  ensureContainer, sendToContainer, getContainerHwnd, focusContainer,
   destroyContainer, isContainerAlive, maximizeContainer, toggleFullscreenContainer,
   getGroupIdByWebContents, isAnyContainerAlive,
 };

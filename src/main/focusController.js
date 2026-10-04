@@ -1,6 +1,5 @@
 const { globalShortcut, BrowserWindow } = require('electron');
-const { focusWindow } = require('./win32/windowOps');
-const { getGroupIdByWebContents } = require('./browserInstanceManager');
+const { getGroupIdByWebContents, focusContainer } = require('./browserInstanceManager');
 
 let registered = [];
 
@@ -36,7 +35,7 @@ function bindHotkeys(groupId, sessions, onSwitch, shouldFire, onFullscreenCb, ce
       accel,
       handler: () => {
         if (!fire() || !session.hwnd) return;
-        focusWindow(session.hwnd);
+        focusContainer(groupId);
         onSwitch?.(session);
       },
     });
@@ -146,7 +145,7 @@ function cycleFocus() {
   }
   if (!target) return;
 
-  focusWindow(target.hwnd);
+  focusContainer(groupId);
   state.onSwitch?.(target);
 }
 
